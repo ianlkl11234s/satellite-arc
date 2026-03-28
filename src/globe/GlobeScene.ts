@@ -223,7 +223,9 @@ export class GlobeScene {
 
       for (let i = 0; i < this.tles.length; i++) {
         const tle = this.tles[i]!;
-        if (!this.visibleOrbitTypes.has(tle.orbit_type)) continue;
+        // 篩選：Starlink 獨立為一個類型
+        const filterType = tle.constellation === "Starlink" ? "Starlink" : tle.orbit_type;
+        if (!this.visibleOrbitTypes.has(filterType)) continue;
 
         const satrec = this.satRecs[i];
         if (!satrec) continue;
@@ -243,7 +245,7 @@ export class GlobeScene {
             index: i,
             x, y, z,
             lat, lng, altKm,
-            orbitType: tle.orbit_type,
+            orbitType: filterType,
             name: tle.name,
             constellation: tle.constellation,
           });

@@ -6,14 +6,30 @@ import { loadSatelliteTLEs, convertSatellitesToFlights, loadSatelliteCatalog, ty
 import { getSatelliteInfo, ORBIT_TYPE_LABELS } from "./data/satelliteInfo";
 
 const SPEED_OPTIONS = [1, 10, 30, 60, 120, 300, 600];
-const ALL_ORBIT_TYPES = ["LEO", "MEO", "GEO", "HEO"];
+// Starlink 獨立為篩選類型（因為佔 ~80%）
+const ALL_FILTER_TYPES = ["Starlink", "LEO", "MEO", "GEO", "HEO"];
 
-const ORBIT_COLORS: Record<string, string> = {
+const FILTER_COLORS: Record<string, string> = {
+  Starlink: "#81d4fa",
   LEO: "#4fc3f7",
   MEO: "#ce93d8",
   GEO: "#ffb74d",
   HEO: "#ef5350",
 };
+
+const FILTER_LABELS: Record<string, string> = {
+  Starlink: "星鏈 SpaceX",
+  LEO: "低軌道（非星鏈）",
+  MEO: "中軌道",
+  GEO: "同步軌道",
+  HEO: "高橢圓軌道",
+};
+
+/** 取得衛星的篩選分類 */
+function getFilterType(tle: SatelliteTLE): string {
+  if (tle.constellation === "Starlink") return "Starlink";
+  return tle.orbit_type;
+}
 
 export default function App() {
   const [tles, setTles] = useState<SatelliteTLE[]>([]);
@@ -27,7 +43,7 @@ export default function App() {
   const [showOrbits, setShowOrbits] = useState(true);
   const [orbitOpacity, setOrbitOpacity] = useState(0.35);
   const [orbScale, setOrbScale] = useState(1.0);
-  const [visibleTypes, setVisibleTypes] = useState<Set<string>>(new Set(ALL_ORBIT_TYPES));
+  const [visibleTypes, setVisibleTypes] = useState<Set<string>>(new Set(ALL_FILTER_TYPES));
   const [showPanel, setShowPanel] = useState(true);
 
   // 選中衛星
@@ -55,14 +71,23 @@ export default function App() {
       });
   }, []);
 
-  // 軌道弧線
+  // 軌道弧線（用 filter type 作為 orbitType，以支援 Starlink 篩選）
   const orbits = useMemo(() => {
     if (tles.length === 0) return [];
     const flights = convertSatellitesToFlights(tles, new Date(), 60, 20);
-    return flights.map((f) => ({
-      path: f.path,
-      orbitType: f.aircraft_type,
-    }));
+    // 建立 norad_id → filter type 對應
+    const tleMap = new Map<string, string>();
+    for (const tle of tles) {
+      tleMap.set(`sat_${tle.norad_id}`, getFilterType(tle));
+    }
+    return flights.map((f) => {
+      // fr24_id 可能是 "sat_12345" 或 "sat_12345_1"（換日線拆分）
+      const baseId = f.fr24_id.replace(/_\d+$/, "");
+      return {
+        path: f.path,
+        orbitType: tleMap.get(baseId) ?? f.aircraft_type,
+      };
+    });
   }, [tles]);
 
   const getCurrentTime = useCallback(() => simTimeRef.current, []);
@@ -118,17 +143,18 @@ export default function App() {
     }
   }, []);
 
-  // 統計
-  const orbitStats = useMemo(() => {
+  // 統計（按 filter type 分組）
+  const filterStats = useMemo(() => {
     const stats: Record<string, number> = {};
     for (const tle of tles) {
-      stats[tle.orbit_type] = (stats[tle.orbit_type] ?? 0) + 1;
+      const ft = getFilterType(tle);
+      stats[ft] = (stats[ft] ?? 0) + 1;
     }
     return stats;
   }, [tles]);
 
   const visibleCount = useMemo(() => {
-    return tles.filter((t) => visibleTypes.has(t.orbit_type)).length;
+    return tles.filter((t) => visibleTypes.has(getFilterType(t))).length;
   }, [tles, visibleTypes]);
 
   if (loading) {
@@ -224,20 +250,20 @@ export default function App() {
           {/* 軌道類型篩選 */}
           <div style={labelStyle}>Orbit Type</div>
           <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-            {ALL_ORBIT_TYPES.map((type) => {
+            {ALL_FILTER_TYPES.map((type) => {
               const active = visibleTypes.has(type);
-              const count = orbitStats[type] ?? 0;
+              const count = filterStats[type] ?? 0;
               return (
                 <label key={type} style={{ display: "flex", alignItems: "center", gap: 8, cursor: "pointer" }}>
                   <input
                     type="checkbox"
                     checked={active}
                     onChange={() => toggleOrbitType(type)}
-                    style={{ accentColor: ORBIT_COLORS[type], width: 14, height: 14 }}
+                    style={{ accentColor: FILTER_COLORS[type], width: 14, height: 14 }}
                   />
-                  <div style={{ width: 8, height: 8, borderRadius: "50%", background: ORBIT_COLORS[type], opacity: active ? 1 : 0.3 }} />
-                  <span style={{ opacity: active ? 1 : 0.4, flex: 1 }}>{type} {ORBIT_TYPE_LABELS[type]?.zh ?? ""}</span>
-                  <span style={{ opacity: 0.4, fontSize: 10 }}>{count}</span>
+                  <div style={{ width: 8, height: 8, borderRadius: "50%", background: FILTER_COLORS[type], opacity: active ? 1 : 0.3 }} />
+                  <span style={{ opacity: active ? 1 : 0.4, flex: 1, fontSize: 11 }}>{FILTER_LABELS[type] ?? type}</span>
+                  <span style={{ opacity: 0.4, fontSize: 10 }}>{count.toLocaleString()}</span>
                 </label>
               );
             })}
@@ -280,7 +306,7 @@ export default function App() {
             background: "rgba(0,0,0,0.75)",
             backdropFilter: "blur(12px)",
             borderRadius: 10,
-            border: `1px solid ${ORBIT_COLORS[selectedSat.orbitType] ?? "rgba(79,195,247,0.3)"}55`,
+            border: `1px solid ${FILTER_COLORS[selectedSat.orbitType] ?? "rgba(79,195,247,0.3)"}55`,
             fontFamily: "monospace",
             fontSize: 12,
             color: "#fff",
@@ -290,7 +316,7 @@ export default function App() {
               <div>
                 <div style={{ fontSize: 15, fontWeight: 700 }}>{selectedSat.name}</div>
                 {info && (
-                  <div style={{ fontSize: 13, color: ORBIT_COLORS[selectedSat.orbitType] ?? "#4fc3f7", marginTop: 2 }}>
+                  <div style={{ fontSize: 13, color: FILTER_COLORS[selectedSat.orbitType] ?? "#4fc3f7", marginTop: 2 }}>
                     {info.zhName}
                   </div>
                 )}
@@ -317,7 +343,7 @@ export default function App() {
 
               <span style={{ opacity: 0.45 }}>軌道類型</span>
               <span>
-                <span style={{ color: ORBIT_COLORS[selectedSat.orbitType] }}>{selectedSat.orbitType}</span>
+                <span style={{ color: FILTER_COLORS[selectedSat.orbitType] }}>{selectedSat.orbitType}</span>
                 {orbitLabel && <span style={{ opacity: 0.5 }}> {orbitLabel.zh}</span>}
               </span>
 
@@ -436,12 +462,16 @@ export default function App() {
 
       {/* 軌道統計（右上） */}
       <div style={{ position: "absolute", top: 16, right: 20, zIndex: 10, display: "flex", gap: 12, pointerEvents: "none" }}>
-        {Object.entries(orbitStats).map(([type, count]) => (
-          <div key={type} style={{ display: "flex", alignItems: "center", gap: 6, fontFamily: "monospace", fontSize: 11, color: "rgba(255,255,255,0.7)", opacity: visibleTypes.has(type) ? 1 : 0.3 }}>
-            <div style={{ width: 8, height: 8, borderRadius: "50%", background: ORBIT_COLORS[type] }} />
-            {type} {ORBIT_TYPE_LABELS[type]?.zh ?? ""} {count}
-          </div>
-        ))}
+        {ALL_FILTER_TYPES.map((type) => {
+          const count = filterStats[type] ?? 0;
+          if (count === 0) return null;
+          return (
+            <div key={type} style={{ display: "flex", alignItems: "center", gap: 6, fontFamily: "monospace", fontSize: 11, color: "rgba(255,255,255,0.7)", opacity: visibleTypes.has(type) ? 1 : 0.3 }}>
+              <div style={{ width: 8, height: 8, borderRadius: "50%", background: FILTER_COLORS[type] }} />
+              {FILTER_LABELS[type] ?? type} {count.toLocaleString()}
+            </div>
+          );
+        })}
       </div>
 
       {/* 時間控制列 */}

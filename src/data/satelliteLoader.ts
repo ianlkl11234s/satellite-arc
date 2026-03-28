@@ -62,12 +62,15 @@ function scaleAltitude(altMeters: number): number {
  * 從 Supabase 載入衛星 TLE 資料
  */
 export async function loadSatelliteTLEs(): Promise<SatelliteTLE[]> {
+  // PostgREST 預設只回 1,000 筆，用 Range header 拿全部（最多 15,000）
   const url = `${SUPABASE_URL}/rest/v1/satellite_tle?select=norad_id,name,constellation,orbit_type,tle_line1,tle_line2,inclination,period_min&order=norad_id`;
 
   const resp = await fetch(url, {
     headers: {
       apikey: SUPABASE_ANON_KEY,
       Authorization: `Bearer ${SUPABASE_ANON_KEY}`,
+      Range: "0-14999",
+      Prefer: "count=none",
     },
   });
 

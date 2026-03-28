@@ -10,6 +10,7 @@ import { geoToCartesian } from "./coordinates";
 
 /** 軌道類型色碼 */
 const ORBIT_COLORS: Record<string, [number, number, number]> = {
+  Starlink: [0.51, 0.83, 0.98],
   LEO: [0.31, 0.76, 0.97],
   MEO: [0.67, 0.33, 0.83],
   GEO: [1.0, 0.72, 0.3],

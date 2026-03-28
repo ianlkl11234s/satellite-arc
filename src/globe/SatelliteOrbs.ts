@@ -11,10 +11,11 @@ const MAX_INSTANCES = 4096;
 
 /** 軌道類型色碼 */
 const ORBIT_TYPE_COLORS: Record<string, THREE.Color> = {
-  LEO: new THREE.Color(0.31, 0.76, 0.97),  // 淺藍
-  MEO: new THREE.Color(0.67, 0.33, 0.83),  // 紫
-  GEO: new THREE.Color(1.0, 0.72, 0.3),    // 橘
-  HEO: new THREE.Color(0.94, 0.33, 0.31),  // 紅
+  Starlink: new THREE.Color(0.51, 0.83, 0.98), // 亮淺藍
+  LEO: new THREE.Color(0.31, 0.76, 0.97),      // 淺藍
+  MEO: new THREE.Color(0.67, 0.33, 0.83),      // 紫
+  GEO: new THREE.Color(1.0, 0.72, 0.3),        // 橘
+  HEO: new THREE.Color(0.94, 0.33, 0.31),      // 紅
 };
 
 const DEFAULT_COLOR = new THREE.Color(0.4, 0.7, 1.0);
