@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { GlobeView } from "./globe/GlobeView";
 import type { SatellitePosition } from "./globe/GlobeScene";
 import type { SatelliteTLE } from "./data/satelliteLoader";
-import { loadSatelliteTLEs, convertSatellitesToFlights } from "./data/satelliteLoader";
+import { loadSatelliteTLEs, convertSatellitesToFlights, loadSatelliteCatalog, type SatelliteCatalog } from "./data/satelliteLoader";
 import { getSatelliteInfo, ORBIT_TYPE_LABELS } from "./data/satelliteInfo";
 
 const SPEED_OPTIONS = [1, 10, 30, 60, 120, 300, 600];
@@ -32,6 +32,8 @@ export default function App() {
 
   // 選中衛星
   const [selectedSat, setSelectedSat] = useState<SatellitePosition | null>(null);
+  const [catalog, setCatalog] = useState<SatelliteCatalog | null>(null);
+  const [catalogLoading, setCatalogLoading] = useState(false);
 
   // 模擬時間
   const simTimeRef = useRef(Date.now() / 1000);
@@ -103,6 +105,17 @@ export default function App() {
 
   const handleSatelliteClick = useCallback((sat: SatellitePosition | null) => {
     setSelectedSat(sat);
+    setCatalog(null);
+    if (sat) {
+      const noradId = parseInt(sat.id.replace("sat_", ""), 10);
+      if (!isNaN(noradId)) {
+        setCatalogLoading(true);
+        loadSatelliteCatalog(noradId).then((c) => {
+          setCatalog(c);
+          setCatalogLoading(false);
+        }).catch(() => setCatalogLoading(false));
+      }
+    }
   }, []);
 
   // 統計
@@ -318,18 +331,98 @@ export default function App() {
               <span style={{ opacity: 0.45 }}>星座/系統</span>
               <span>{selectedSat.constellation || (info?.zhName ?? "—")}</span>
 
-              {info && (
+              {/* UCS Catalog 資料 */}
+              {catalogLoading && (
+                <>
+                  <span style={{ opacity: 0.45 }}>載入中</span>
+                  <span style={{ opacity: 0.4 }}>...</span>
+                </>
+              )}
+
+              {catalog && (
+                <>
+                  <span style={{ opacity: 0.45 }}>營運商</span>
+                  <span>{catalog.operator ?? "—"}</span>
+
+                  <span style={{ opacity: 0.45 }}>國家</span>
+                  <span>{catalog.country_operator ?? info?.country ?? "—"}</span>
+
+                  <span style={{ opacity: 0.45 }}>用途</span>
+                  <span>{catalog.purpose ?? info?.purpose ?? "—"}</span>
+
+                  {catalog.detailed_purpose && (
+                    <>
+                      <span style={{ opacity: 0.45 }}>詳細用途</span>
+                      <span style={{ fontSize: 11 }}>{catalog.detailed_purpose}</span>
+                    </>
+                  )}
+
+                  <span style={{ opacity: 0.45 }}>使用者</span>
+                  <span>{catalog.users ?? "—"}</span>
+
+                  {catalog.launch_date && (
+                    <>
+                      <span style={{ opacity: 0.45 }}>發射日期</span>
+                      <span>{catalog.launch_date}</span>
+                    </>
+                  )}
+
+                  {catalog.launch_mass_kg && (
+                    <>
+                      <span style={{ opacity: 0.45 }}>發射質量</span>
+                      <span>{catalog.launch_mass_kg.toLocaleString()} kg</span>
+                    </>
+                  )}
+
+                  {catalog.expected_lifetime_yrs && (
+                    <>
+                      <span style={{ opacity: 0.45 }}>預期壽命</span>
+                      <span>{catalog.expected_lifetime_yrs} 年</span>
+                    </>
+                  )}
+
+                  {catalog.contractor && (
+                    <>
+                      <span style={{ opacity: 0.45 }}>製造商</span>
+                      <span style={{ fontSize: 11 }}>{catalog.contractor}</span>
+                    </>
+                  )}
+
+                  {catalog.launch_vehicle && (
+                    <>
+                      <span style={{ opacity: 0.45 }}>發射載具</span>
+                      <span style={{ fontSize: 11 }}>{catalog.launch_vehicle}</span>
+                    </>
+                  )}
+
+                  {catalog.launch_site && (
+                    <>
+                      <span style={{ opacity: 0.45 }}>發射地點</span>
+                      <span style={{ fontSize: 11 }}>{catalog.launch_site}</span>
+                    </>
+                  )}
+                </>
+              )}
+
+              {!catalog && !catalogLoading && !info && (
+                <>
+                  <span style={{ opacity: 0.45 }}>用途</span>
+                  <span style={{ opacity: 0.4 }}>無 UCS 目錄資料</span>
+                </>
+              )}
+
+              {!catalog && !catalogLoading && info && (
                 <>
                   <span style={{ opacity: 0.45 }}>用途</span>
                   <span>{info.purpose}</span>
-
                   <span style={{ opacity: 0.45 }}>國家</span>
                   <span>{info.country}</span>
                 </>
               )}
 
-              <span style={{ opacity: 0.45, marginTop: 4 }}>高度</span>
-              <span style={{ marginTop: 4 }}>{selectedSat.altKm.toFixed(1)} km</span>
+              {/* 即時位置 */}
+              <span style={{ opacity: 0.45, marginTop: 6, borderTop: "1px solid rgba(255,255,255,0.1)", paddingTop: 6 }}>高度</span>
+              <span style={{ marginTop: 6, borderTop: "1px solid rgba(255,255,255,0.1)", paddingTop: 6 }}>{selectedSat.altKm.toFixed(1)} km</span>
 
               <span style={{ opacity: 0.45 }}>緯度</span>
               <span>{selectedSat.lat.toFixed(4)}°</span>

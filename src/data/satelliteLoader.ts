@@ -212,6 +212,41 @@ export function convertSatellitesToFlights(
   return flights;
 }
 
+/** UCS Satellite Catalog 資料 */
+export interface SatelliteCatalog {
+  norad_number: number;
+  name: string;
+  official_name: string | null;
+  country_operator: string | null;
+  operator: string | null;
+  users: string | null;
+  purpose: string | null;
+  detailed_purpose: string | null;
+  orbit_class: string | null;
+  launch_date: string | null;
+  launch_mass_kg: number | null;
+  expected_lifetime_yrs: number | null;
+  contractor: string | null;
+  launch_site: string | null;
+  launch_vehicle: string | null;
+}
+
+/**
+ * 從 Supabase 載入 UCS 衛星目錄（用 NORAD ID 查詢單顆）
+ */
+export async function loadSatelliteCatalog(noradId: number): Promise<SatelliteCatalog | null> {
+  const url = `${SUPABASE_URL}/rest/v1/satellite_catalog?norad_number=eq.${noradId}&limit=1`;
+  const resp = await fetch(url, {
+    headers: {
+      apikey: SUPABASE_ANON_KEY,
+      Authorization: `Bearer ${SUPABASE_ANON_KEY}`,
+    },
+  });
+  if (!resp.ok) return null;
+  const data = await resp.json();
+  return data[0] ?? null;
+}
+
 /**
  * 計算所有衛星在某個時刻的即時位置
  */
