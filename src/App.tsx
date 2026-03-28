@@ -3,6 +3,7 @@ import { GlobeView } from "./globe/GlobeView";
 import type { SatellitePosition } from "./globe/GlobeScene";
 import type { SatelliteTLE } from "./data/satelliteLoader";
 import { loadSatelliteTLEs, convertSatellitesToFlights } from "./data/satelliteLoader";
+import { getSatelliteInfo, ORBIT_TYPE_LABELS } from "./data/satelliteInfo";
 
 const SPEED_OPTIONS = [1, 10, 30, 60, 120, 300, 600];
 const ALL_ORBIT_TYPES = ["LEO", "MEO", "GEO", "HEO"];
@@ -222,7 +223,7 @@ export default function App() {
                     style={{ accentColor: ORBIT_COLORS[type], width: 14, height: 14 }}
                   />
                   <div style={{ width: 8, height: 8, borderRadius: "50%", background: ORBIT_COLORS[type], opacity: active ? 1 : 0.3 }} />
-                  <span style={{ opacity: active ? 1 : 0.4, flex: 1 }}>{type}</span>
+                  <span style={{ opacity: active ? 1 : 0.4, flex: 1 }}>{type} {ORBIT_TYPE_LABELS[type]?.zh ?? ""}</span>
                   <span style={{ opacity: 0.4, fontSize: 10 }}>{count}</span>
                 </label>
               );
@@ -252,54 +253,100 @@ export default function App() {
       )}
 
       {/* 選中衛星資訊 */}
-      {selectedSat && (
-        <div style={{
-          position: "absolute",
-          top: 60,
-          right: 16,
-          zIndex: 10,
-          width: 280,
-          padding: "16px",
-          background: "rgba(0,0,0,0.7)",
-          backdropFilter: "blur(12px)",
-          borderRadius: 10,
-          border: "1px solid rgba(79,195,247,0.3)",
-          fontFamily: "monospace",
-          fontSize: 12,
-          color: "#fff",
-        }}>
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10 }}>
-            <span style={{ fontSize: 14, fontWeight: 700 }}>{selectedSat.name}</span>
-            <button
-              onClick={() => setSelectedSat(null)}
-              style={{ background: "none", border: "1px solid rgba(255,255,255,0.2)", borderRadius: 4, color: "#fff", cursor: "pointer", padding: "2px 8px", fontSize: 11 }}
-            >
-              x
-            </button>
+      {selectedSat && (() => {
+        const info = getSatelliteInfo(selectedSat.name);
+        const orbitLabel = ORBIT_TYPE_LABELS[selectedSat.orbitType];
+        return (
+          <div style={{
+            position: "absolute",
+            top: 60,
+            right: 16,
+            zIndex: 10,
+            width: 300,
+            padding: "16px",
+            background: "rgba(0,0,0,0.75)",
+            backdropFilter: "blur(12px)",
+            borderRadius: 10,
+            border: `1px solid ${ORBIT_COLORS[selectedSat.orbitType] ?? "rgba(79,195,247,0.3)"}55`,
+            fontFamily: "monospace",
+            fontSize: 12,
+            color: "#fff",
+          }}>
+            {/* 標題 */}
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 6 }}>
+              <div>
+                <div style={{ fontSize: 15, fontWeight: 700 }}>{selectedSat.name}</div>
+                {info && (
+                  <div style={{ fontSize: 13, color: ORBIT_COLORS[selectedSat.orbitType] ?? "#4fc3f7", marginTop: 2 }}>
+                    {info.zhName}
+                  </div>
+                )}
+              </div>
+              <button
+                onClick={() => setSelectedSat(null)}
+                style={{ background: "none", border: "1px solid rgba(255,255,255,0.2)", borderRadius: 4, color: "#fff", cursor: "pointer", padding: "2px 8px", fontSize: 11, flexShrink: 0 }}
+              >
+                x
+              </button>
+            </div>
+
+            {/* 描述 */}
+            {info && (
+              <div style={{ fontSize: 11, color: "rgba(255,255,255,0.55)", marginBottom: 10, lineHeight: 1.5 }}>
+                {info.desc} · {info.country} · {info.purpose}
+              </div>
+            )}
+
+            {/* 資訊表格 */}
+            <div style={{ display: "grid", gridTemplateColumns: "auto 1fr", gap: "5px 14px", opacity: 0.9 }}>
+              <span style={{ opacity: 0.45 }}>NORAD ID</span>
+              <span>{selectedSat.id.replace("sat_", "")}</span>
+
+              <span style={{ opacity: 0.45 }}>軌道類型</span>
+              <span>
+                <span style={{ color: ORBIT_COLORS[selectedSat.orbitType] }}>{selectedSat.orbitType}</span>
+                {orbitLabel && <span style={{ opacity: 0.5 }}> {orbitLabel.zh}</span>}
+              </span>
+
+              {orbitLabel && (
+                <>
+                  <span style={{ opacity: 0.45 }}></span>
+                  <span style={{ opacity: 0.4, fontSize: 10 }}>{orbitLabel.desc}</span>
+                </>
+              )}
+
+              <span style={{ opacity: 0.45 }}>星座/系統</span>
+              <span>{selectedSat.constellation || (info?.zhName ?? "—")}</span>
+
+              {info && (
+                <>
+                  <span style={{ opacity: 0.45 }}>用途</span>
+                  <span>{info.purpose}</span>
+
+                  <span style={{ opacity: 0.45 }}>國家</span>
+                  <span>{info.country}</span>
+                </>
+              )}
+
+              <span style={{ opacity: 0.45, marginTop: 4 }}>高度</span>
+              <span style={{ marginTop: 4 }}>{selectedSat.altKm.toFixed(1)} km</span>
+
+              <span style={{ opacity: 0.45 }}>緯度</span>
+              <span>{selectedSat.lat.toFixed(4)}°</span>
+
+              <span style={{ opacity: 0.45 }}>經度</span>
+              <span>{selectedSat.lng.toFixed(4)}°</span>
+            </div>
           </div>
-          <div style={{ display: "grid", gridTemplateColumns: "auto 1fr", gap: "4px 12px", opacity: 0.85 }}>
-            <span style={{ opacity: 0.5 }}>NORAD ID</span>
-            <span>{selectedSat.id.replace("sat_", "")}</span>
-            <span style={{ opacity: 0.5 }}>Orbit</span>
-            <span style={{ color: ORBIT_COLORS[selectedSat.orbitType] }}>{selectedSat.orbitType}</span>
-            <span style={{ opacity: 0.5 }}>Constellation</span>
-            <span>{selectedSat.constellation || "—"}</span>
-            <span style={{ opacity: 0.5 }}>Altitude</span>
-            <span>{selectedSat.altKm.toFixed(1)} km</span>
-            <span style={{ opacity: 0.5 }}>Latitude</span>
-            <span>{selectedSat.lat.toFixed(4)}</span>
-            <span style={{ opacity: 0.5 }}>Longitude</span>
-            <span>{selectedSat.lng.toFixed(4)}</span>
-          </div>
-        </div>
-      )}
+        );
+      })()}
 
       {/* 軌道統計（右上） */}
       <div style={{ position: "absolute", top: 16, right: 20, zIndex: 10, display: "flex", gap: 12, pointerEvents: "none" }}>
         {Object.entries(orbitStats).map(([type, count]) => (
           <div key={type} style={{ display: "flex", alignItems: "center", gap: 6, fontFamily: "monospace", fontSize: 11, color: "rgba(255,255,255,0.7)", opacity: visibleTypes.has(type) ? 1 : 0.3 }}>
             <div style={{ width: 8, height: 8, borderRadius: "50%", background: ORBIT_COLORS[type] }} />
-            {type} {count}
+            {type} {ORBIT_TYPE_LABELS[type]?.zh ?? ""} {count}
           </div>
         ))}
       </div>
