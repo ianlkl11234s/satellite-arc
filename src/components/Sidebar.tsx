@@ -472,7 +472,7 @@ export function Sidebar(props: SidebarProps) {
           className="sidebar-scrollbar"
           style={{
             position: "absolute",
-            top: 64,
+            top: 80,
             left: 56,
             maxHeight: "calc(100vh - 140px)",
             width: 260,

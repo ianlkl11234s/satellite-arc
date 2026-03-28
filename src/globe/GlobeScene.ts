@@ -43,12 +43,18 @@ export class GlobeScene {
   trailLength = 8;
   trailStepSec = 30;
   private trailUpdateCounter = 0;
-  private trailUpdateInterval = 30;
 
   // 分批更新位置：每幀只算 1/N 的衛星，快取結果
   private readonly BATCH_COUNT = 4;
   private batchIndex = 0;
   private positionCache = new Map<number, SatellitePosition>();
+
+  // 歷史位置環形緩衝區（用於動態尾巴，不需額外 SGP4）
+  // key: satellite index → 最近 N 幀的 [x,y,z] 位置
+  private historyBuffer = new Map<number, Array<[number, number, number]>>();
+  private historyMaxLen = 20; // 最多存幾幀歷史
+  private historyWriteCounter = 0;
+  private historyWriteInterval = 3; // 每 N 幀記錄一次位置
 
   // 外部回呼
   getCurrentTime: () => number = () => Date.now() / 1000;
@@ -312,39 +318,30 @@ export class GlobeScene {
       this.lastPositions = entries;
       this.orbs.update(entries, elapsed);
 
-      // 計算動態尾巴（每 N 幀更新一次）
+      // 記錄歷史位置到環形緩衝區（每 N 幀記錄一次）
+      this.historyWriteCounter++;
+      if (this.historyWriteCounter % this.historyWriteInterval === 0) {
+        for (const pos of entries) {
+          let hist = this.historyBuffer.get(pos.index);
+          if (!hist) {
+            hist = [];
+            this.historyBuffer.set(pos.index, hist);
+          }
+          hist.unshift([pos.x, pos.y, pos.z]);
+          if (hist.length > this.historyMaxLen) hist.length = this.historyMaxLen;
+        }
+      }
+
+      // 動態尾巴：直接從歷史緩衝區讀取（零 SGP4 計算）
       this.trailUpdateCounter++;
-      if (this.showTrails && this.trailUpdateCounter % this.trailUpdateInterval === 0) {
+      if (this.showTrails && this.trailUpdateCounter % 5 === 0) {
         const trailEntries: TrailEntry[] = [];
-        for (let i = 0; i < this.tles.length; i++) {
-          const tle = this.tles[i]!;
-          const filterType = tle.constellation === "Starlink" ? "Starlink" : tle.orbit_type;
-          if (!this.visibleOrbitTypes.has(filterType)) continue;
-
-          const satrec = this.satRecs[i];
-          if (!satrec) continue;
-
-          const points: Array<[number, number, number]> = [];
-          for (let step = 0; step < this.trailLength; step++) {
-            const pastDate = new Date((currentTime - step * this.trailStepSec) * 1000);
-            try {
-              const pv = satellite.propagate(satrec, pastDate);
-              if (!pv.position || typeof pv.position === "boolean") break;
-              const pastGmst = satellite.gstime(pastDate);
-              const g = satellite.eciToGeodetic(pv.position, pastGmst);
-              const [px, py, pz] = geoToCartesian(
-                satellite.degreesLat(g.latitude),
-                satellite.degreesLong(g.longitude),
-                g.height,
-              );
-              points.push([px, py, pz]);
-            } catch {
-              break;
-            }
-          }
-          if (points.length >= 2) {
-            trailEntries.push({ points, orbitType: filterType });
-          }
+        const maxPts = Math.min(this.trailLength, this.historyMaxLen);
+        for (const pos of entries) {
+          const hist = this.historyBuffer.get(pos.index);
+          if (!hist || hist.length < 2) continue;
+          const points = hist.slice(0, maxPts);
+          trailEntries.push({ points, orbitType: pos.orbitType });
         }
         this.trails.update(trailEntries);
       }
