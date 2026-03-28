@@ -62,23 +62,41 @@ function scaleAltitude(altMeters: number): number {
  * 從 Supabase 載入衛星 TLE 資料
  */
 export async function loadSatelliteTLEs(): Promise<SatelliteTLE[]> {
-  // PostgREST 預設只回 1,000 筆，用 Range header 拿全部（最多 15,000）
-  const url = `${SUPABASE_URL}/rest/v1/satellite_tle?select=norad_id,name,constellation,orbit_type,tle_line1,tle_line2,inclination,period_min&order=norad_id`;
+  // Supabase 專案層級限制每次最多 5,000 筆，需要分頁拉取
+  const PAGE_SIZE = 5000;
+  const baseUrl = `${SUPABASE_URL}/rest/v1/satellite_tle?select=norad_id,name,constellation,orbit_type,tle_line1,tle_line2,inclination,period_min&order=norad_id`;
+  const headers = {
+    apikey: SUPABASE_ANON_KEY,
+    Authorization: `Bearer ${SUPABASE_ANON_KEY}`,
+    Prefer: "count=exact",
+  };
 
-  const resp = await fetch(url, {
-    headers: {
-      apikey: SUPABASE_ANON_KEY,
-      Authorization: `Bearer ${SUPABASE_ANON_KEY}`,
-      Range: "0-14999",
-      Prefer: "count=none",
-    },
-  });
+  const allData: SatelliteTLE[] = [];
+  let offset = 0;
 
-  if (!resp.ok) {
-    throw new Error(`Failed to load satellite TLE: ${resp.status}`);
+  while (true) {
+    const resp = await fetch(baseUrl, {
+      headers: {
+        ...headers,
+        Range: `${offset}-${offset + PAGE_SIZE - 1}`,
+      },
+    });
+
+    if (!resp.ok && resp.status !== 206) {
+      throw new Error(`Failed to load satellite TLE: ${resp.status}`);
+    }
+
+    const page: SatelliteTLE[] = await resp.json();
+    allData.push(...page);
+
+    console.log(`[satellite] 載入 ${allData.length} 筆 TLE (offset=${offset})`);
+
+    // 如果回傳不足一頁，代表已經拿完
+    if (page.length < PAGE_SIZE) break;
+    offset += PAGE_SIZE;
   }
 
-  return resp.json();
+  return allData;
 }
 
 /**
