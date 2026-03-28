@@ -43,6 +43,17 @@ export class OrbitLines {
     scene.add(this.mesh);
   }
 
+  private customColors: Record<string, [number, number, number]> = {};
+
+  setColors(colors: Record<string, string>) {
+    for (const [k, hex] of Object.entries(colors)) {
+      const r = parseInt(hex.slice(1, 3), 16) / 255;
+      const g = parseInt(hex.slice(3, 5), 16) / 255;
+      const b = parseInt(hex.slice(5, 7), 16) / 255;
+      this.customColors[k] = [r, g, b];
+    }
+  }
+
   setOpacity(opacity: number) {
     (this.mesh.material as THREE.LineBasicMaterial).opacity = opacity;
   }
@@ -77,7 +88,7 @@ export class OrbitLines {
     for (const orbit of orbits) {
       if (orbit.path.length < 2) continue;
 
-      const [cr, cg, cb] = ORBIT_COLORS[orbit.orbitType] ?? DEFAULT_C;
+      const [cr, cg, cb] = this.customColors[orbit.orbitType] ?? ORBIT_COLORS[orbit.orbitType] ?? DEFAULT_C;
 
       for (let i = 0; i < orbit.path.length - 1; i++) {
         const p0 = orbit.path[i]!;

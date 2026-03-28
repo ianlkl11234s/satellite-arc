@@ -54,13 +54,17 @@ export class GlobeScene {
   private satRecs: satellite.SatRec[] = [];
 
   // 篩選
-  private visibleOrbitTypes = new Set(["LEO", "MEO", "GEO", "HEO"]);
+  private visibleOrbitTypes = new Set(["Starlink", "LEO", "MEO", "GEO", "HEO"]);
+  constellationFilter: Set<string> | null = null;
+  countryFilter: Set<string> | null = null;
+  countryMap: Record<string, string> = {};
 
   // 視覺參數
   showTrails = true;
   showOrbits = false;
   orbitOpacity = 0.35;
   orbScale = 1.0;
+  orbOpacity = 0.9;
 
   // 最新位置快取（供點擊查詢用）
   lastPositions: SatellitePosition[] = [];
@@ -150,6 +154,17 @@ export class GlobeScene {
   setOrbScale(scale: number) {
     this.orbScale = scale;
     this.orbs.setScale(scale);
+  }
+
+  setOrbOpacity(opacity: number) {
+    this.orbOpacity = opacity;
+    this.orbs.setOpacity(opacity);
+  }
+
+  setColors(colors: Record<string, string>) {
+    this.orbs.setColors(colors);
+    this.orbits.setColors(colors);
+    this.trails.setColors(colors);
   }
 
   /**
@@ -244,6 +259,10 @@ export class GlobeScene {
         // 篩選：Starlink 獨立為一個類型
         const filterType = tle.constellation === "Starlink" ? "Starlink" : tle.orbit_type;
         if (!this.visibleOrbitTypes.has(filterType)) continue;
+        // 進階篩選：constellation + country
+        if (this.constellationFilter && !this.constellationFilter.has(tle.constellation || "Other")) continue;
+        const country = this.countryMap[tle.constellation] ?? "其他";
+        if (this.countryFilter && !this.countryFilter.has(country)) continue;
 
         const satrec = this.satRecs[i];
         if (!satrec) continue;

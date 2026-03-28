@@ -41,6 +41,19 @@ export class SatelliteOrbs {
     this.baseScale = scale;
   }
 
+  setOpacity(opacity: number) {
+    (this.core.material as THREE.MeshBasicMaterial).opacity = opacity;
+    (this.glow1.material as THREE.MeshBasicMaterial).opacity = opacity * 0.4;
+    (this.glow2.material as THREE.MeshBasicMaterial).opacity = opacity * 0.12;
+  }
+
+  setColors(colors: Record<string, string>) {
+    // 快取自訂色碼，update 時使用
+    this.customColors = colors;
+  }
+
+  private customColors: Record<string, string> = {};
+
   constructor(scene: THREE.Scene) {
     const sphereGeo = new THREE.SphereGeometry(1, 8, 8);
 
@@ -103,7 +116,8 @@ export class SatelliteOrbs {
       const phase = this.phaseOffsets[i]!;
       const pulse = 1.0 + Math.sin(time * 1.5 + phase) * 0.15;
 
-      const color = ORBIT_TYPE_COLORS[orbitType] ?? DEFAULT_COLOR;
+      const customHex = this.customColors[orbitType];
+      const color = customHex ? new THREE.Color(customHex) : (ORBIT_TYPE_COLORS[orbitType] ?? DEFAULT_COLOR);
 
       // Core
       const coreScale = 0.004 * pulse * this.baseScale;

@@ -54,6 +54,17 @@ export class TrailLines {
     scene.add(this.mesh);
   }
 
+  private customColors: Record<string, [number, number, number]> = {};
+
+  setColors(colors: Record<string, string>) {
+    for (const [k, hex] of Object.entries(colors)) {
+      const r = parseInt(hex.slice(1, 3), 16) / 255;
+      const g = parseInt(hex.slice(3, 5), 16) / 255;
+      const b = parseInt(hex.slice(5, 7), 16) / 255;
+      this.customColors[k] = [r, g, b];
+    }
+  }
+
   setOpacity(opacity: number) {
     (this.mesh.material as THREE.LineBasicMaterial).opacity = opacity;
   }
@@ -72,7 +83,7 @@ export class TrailLines {
       if (trail.points.length < 2) continue;
       if (offset >= this.maxVerts) break;
 
-      const [cr, cg, cb] = TRAIL_COLORS[trail.orbitType] ?? DEFAULT_C;
+      const [cr, cg, cb] = this.customColors[trail.orbitType] ?? TRAIL_COLORS[trail.orbitType] ?? DEFAULT_C;
       const numSegs = trail.points.length - 1;
 
       for (let i = 0; i < numSegs; i++) {

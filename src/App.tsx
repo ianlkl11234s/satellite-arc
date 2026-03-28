@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { GlobeView } from "./globe/GlobeView";
+import { GlobeView, type CameraInfo } from "./globe/GlobeView";
 import type { SatellitePosition } from "./globe/GlobeScene";
 import type { SatelliteTLE } from "./data/satelliteLoader";
 import { loadSatelliteTLEs, convertSatellitesToFlights, loadSatelliteCatalog, type SatelliteCatalog } from "./data/satelliteLoader";
@@ -66,6 +66,9 @@ export default function App() {
       setVisibleCountries(new Set(allCountries));
     }
   }, [tles.length, allConstellations, allCountries, visibleConstellations.size]);
+
+  // 相機
+  const [cameraInfo, setCameraInfo] = useState<CameraInfo>({ distance: 3.5, azimuth: 0, polar: 8 });
 
   // 選中衛星
   const [selectedSat, setSelectedSat] = useState<SatellitePosition | null>(null);
@@ -183,8 +186,14 @@ export default function App() {
         showOrbits={showOrbits}
         orbitOpacity={orbitOpacity}
         orbScale={orbScale}
+        orbOpacity={orbOpacity}
+        trailLength={trailLength}
+        colors={colors}
+        visibleConstellations={visibleConstellations}
+        visibleCountries={visibleCountries}
         onSatelliteClick={handleSatelliteClick}
         selectedId={selectedSat?.id ?? null}
+        onCameraChange={setCameraInfo}
       />
 
       {/* Icon Rail Sidebar */}
@@ -213,12 +222,12 @@ export default function App() {
       />
 
       {/* Header（右移避開 sidebar） */}
-      <div style={{ position: "absolute", top: 14, left: 60, zIndex: 10, pointerEvents: "none" }}>
+      <div style={{ position: "absolute", top: 12, left: 60, zIndex: 10, pointerEvents: "none" }}>
         <h1 style={{ margin: 0, fontSize: 20, color: "#fff", fontFamily: "monospace", letterSpacing: 3, textShadow: "0 2px 8px rgba(0,0,0,0.8)" }}>
           Satellite Tracker
         </h1>
-        <div style={{ fontSize: 11, color: "rgba(255,255,255,0.45)", fontFamily: "monospace", marginTop: 3 }}>
-          {visibleCount.toLocaleString()} / {tles.length.toLocaleString()} satellites
+        <div style={{ fontSize: 11, color: "rgba(255,255,255,0.4)", fontFamily: "monospace", marginTop: 3 }}>
+          {visibleCount.toLocaleString()} satellites · dist {cameraInfo.distance.toFixed(1)} az {cameraInfo.azimuth}° el {cameraInfo.polar}°
         </div>
       </div>
 

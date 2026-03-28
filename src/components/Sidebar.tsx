@@ -474,7 +474,7 @@ export function Sidebar(props: SidebarProps) {
             position: "absolute",
             top: 8,
             left: 56,
-            bottom: 80,
+            maxHeight: "calc(100vh - 100px)",
             width: 260,
             zIndex: 19,
             padding: "14px 16px",
