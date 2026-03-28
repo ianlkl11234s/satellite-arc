@@ -42,6 +42,14 @@ export class OrbitLines {
     scene.add(this.mesh);
   }
 
+  setOpacity(opacity: number) {
+    (this.mesh.material as THREE.LineBasicMaterial).opacity = opacity;
+  }
+
+  setVisible(visible: boolean) {
+    this.mesh.visible = visible;
+  }
+
   update(orbits: OrbitData[]) {
     // 簡單的 key 比較避免重複建構
     const key = `${orbits.length}`;

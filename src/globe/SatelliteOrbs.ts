@@ -34,6 +34,12 @@ export class SatelliteOrbs {
   private dummy = new THREE.Object3D();
   private phaseOffsets = new Float32Array(MAX_INSTANCES);
 
+  private baseScale = 1.0;
+
+  setScale(scale: number) {
+    this.baseScale = scale;
+  }
+
   constructor(scene: THREE.Scene) {
     const sphereGeo = new THREE.SphereGeometry(1, 8, 8);
 
@@ -99,7 +105,7 @@ export class SatelliteOrbs {
       const color = ORBIT_TYPE_COLORS[orbitType] ?? DEFAULT_COLOR;
 
       // Core
-      const coreScale = 0.004 * pulse;
+      const coreScale = 0.004 * pulse * this.baseScale;
       this.dummy.position.set(x, y, z);
       this.dummy.scale.setScalar(coreScale);
       this.dummy.updateMatrix();

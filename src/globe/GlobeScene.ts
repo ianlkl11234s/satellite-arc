@@ -1,8 +1,5 @@
 /**
  * 3D 地球場景管理
- *
- * 管理 Three.js scene, camera, renderer, OrbitControls，
- * 以及地球、衛星光點、軌道弧線的更新。
  */
 
 import * as THREE from "three";
@@ -13,6 +10,20 @@ import { OrbitLines } from "./OrbitLines";
 import { geoToCartesian } from "./coordinates";
 import type { SatelliteTLE } from "../data/satelliteLoader";
 import * as satellite from "satellite.js";
+
+export interface SatellitePosition {
+  id: string;
+  index: number;
+  x: number;
+  y: number;
+  z: number;
+  lat: number;
+  lng: number;
+  altKm: number;
+  orbitType: string;
+  name: string;
+  constellation: string;
+}
 
 export class GlobeScene {
   scene: THREE.Scene;
@@ -26,30 +37,41 @@ export class GlobeScene {
   private animId = 0;
   private clock = new THREE.Clock();
 
-  // 外部回呼：每幀取得當前時間（Unix timestamp）
+  // 外部回呼
   getCurrentTime: () => number = () => Date.now() / 1000;
 
-  // TLE 快取（用於即時 SGP4 計算）
+  // TLE 快取
   private tles: SatelliteTLE[] = [];
   private satRecs: satellite.SatRec[] = [];
 
+  // 篩選
+  private visibleOrbitTypes = new Set(["LEO", "MEO", "GEO", "HEO"]);
+
+  // 視覺參數
+  showOrbits = true;
+  orbitOpacity = 0.35;
+  orbScale = 1.0;
+
+  // 最新位置快取（供點擊查詢用）
+  lastPositions: SatellitePosition[] = [];
+
+  // 選中的衛星
+  selectedId: string | null = null;
+  private selectedRing: THREE.Line | null = null;
+
   constructor(container: HTMLElement) {
-    // Scene
     this.scene = new THREE.Scene();
     this.scene.background = new THREE.Color(0x020208);
 
-    // Camera
     const aspect = container.clientWidth / container.clientHeight;
     this.camera = new THREE.PerspectiveCamera(45, aspect, 0.01, 100);
     this.camera.position.set(0, 0.5, 3.5);
 
-    // Renderer
     this.renderer = new THREE.WebGLRenderer({ antialias: true });
     this.renderer.setSize(container.clientWidth, container.clientHeight);
     this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
     container.appendChild(this.renderer.domElement);
 
-    // Controls
     this.controls = new OrbitControls(this.camera, this.renderer.domElement);
     this.controls.enableDamping = true;
     this.controls.dampingFactor = 0.05;
@@ -57,15 +79,12 @@ export class GlobeScene {
     this.controls.maxDistance = 8;
     this.controls.enablePan = false;
 
-    // Earth
     this.earth = new EarthMesh();
     this.scene.add(this.earth.group);
 
-    // Satellites
     this.orbs = new SatelliteOrbs(this.scene);
     this.orbits = new OrbitLines(this.scene);
 
-    // Resize
     const onResize = () => {
       const w = container.clientWidth;
       const h = container.clientHeight;
@@ -75,13 +94,9 @@ export class GlobeScene {
     };
     window.addEventListener("resize", onResize);
 
-    // Start
     this.animate();
   }
 
-  /**
-   * 設定衛星 TLE 資料（載入後呼叫一次）
-   */
   setTLEs(tles: SatelliteTLE[]) {
     this.tles = tles;
     this.satRecs = [];
@@ -94,11 +109,104 @@ export class GlobeScene {
     }
   }
 
-  /**
-   * 設定軌道弧線（從 Flight[] 的 path 建構）
-   */
   setOrbits(orbits: Array<{ path: [number, number, number, number][]; orbitType: string }>) {
-    this.orbits.update(orbits);
+    // 只顯示被篩選的軌道類型
+    const filtered = orbits.filter((o) => this.visibleOrbitTypes.has(o.orbitType));
+    this.orbits.update(filtered);
+  }
+
+  setVisibleOrbitTypes(types: Set<string>) {
+    this.visibleOrbitTypes = types;
+  }
+
+  setOrbitOpacity(opacity: number) {
+    this.orbitOpacity = opacity;
+    this.orbits.setOpacity(opacity);
+  }
+
+  setShowOrbits(show: boolean) {
+    this.showOrbits = show;
+    this.orbits.setVisible(show);
+  }
+
+  setOrbScale(scale: number) {
+    this.orbScale = scale;
+    this.orbs.setScale(scale);
+  }
+
+  /**
+   * 點擊拾取：找最近的衛星
+   */
+  pickSatellite(screenX: number, screenY: number, viewWidth: number, viewHeight: number): SatellitePosition | null {
+    if (this.lastPositions.length === 0) return null;
+
+    let closest: SatellitePosition | null = null;
+    let closestDist = 30; // 像素閾值
+
+    const mvp = new THREE.Matrix4().multiplyMatrices(
+      this.camera.projectionMatrix,
+      this.camera.matrixWorldInverse,
+    );
+    const v = new THREE.Vector4();
+
+    for (const pos of this.lastPositions) {
+      v.set(pos.x, pos.y, pos.z, 1).applyMatrix4(mvp);
+      if (v.w <= 0) continue; // 在相機後面
+      const sx = ((v.x / v.w) * 0.5 + 0.5) * viewWidth;
+      const sy = ((-v.y / v.w) * 0.5 + 0.5) * viewHeight;
+      const dist = Math.sqrt((sx - screenX) ** 2 + (sy - screenY) ** 2);
+      if (dist < closestDist) {
+        closestDist = dist;
+        closest = pos;
+      }
+    }
+
+    return closest;
+  }
+
+  /**
+   * 設定選中衛星（顯示高亮環）
+   */
+  setSelected(id: string | null) {
+    this.selectedId = id;
+    // 移除舊的選中環
+    if (this.selectedRing) {
+      this.scene.remove(this.selectedRing);
+      this.selectedRing.geometry.dispose();
+      this.selectedRing = null;
+    }
+  }
+
+  private updateSelectedRing() {
+    if (!this.selectedId) return;
+    const pos = this.lastPositions.find((p) => p.id === this.selectedId);
+    if (!pos) return;
+
+    if (!this.selectedRing) {
+      const ringGeo = new THREE.RingGeometry(0.018, 0.022, 32);
+      const ringMat = new THREE.MeshBasicMaterial({
+        color: 0x4fc3f7,
+        transparent: true,
+        opacity: 0.8,
+        side: THREE.DoubleSide,
+        depthWrite: false,
+      });
+      this.selectedRing = new THREE.Line(
+        new THREE.BufferGeometry().setFromPoints(
+          Array.from({ length: 65 }, (_, i) => {
+            const angle = (i / 64) * Math.PI * 2;
+            return new THREE.Vector3(Math.cos(angle) * 0.02, Math.sin(angle) * 0.02, 0);
+          }),
+        ),
+        new THREE.LineBasicMaterial({ color: 0x4fc3f7, transparent: true, opacity: 0.9 }),
+      );
+      ringMat.dispose();
+      ringGeo.dispose();
+      this.scene.add(this.selectedRing);
+    }
+
+    this.selectedRing.position.set(pos.x, pos.y, pos.z);
+    this.selectedRing.lookAt(0, 0, 0);
   }
 
   private animate() {
@@ -108,18 +216,15 @@ export class GlobeScene {
     const elapsed = this.clock.getElapsedTime();
     const currentTime = this.getCurrentTime();
 
-    // 即時計算衛星位置
     if (this.tles.length > 0) {
       const date = new Date(currentTime * 1000);
-      const entries: Array<{
-        id: string;
-        x: number;
-        y: number;
-        z: number;
-        orbitType: string;
-      }> = [];
+      const gmst = satellite.gstime(date);
+      const entries: SatellitePosition[] = [];
 
       for (let i = 0; i < this.tles.length; i++) {
+        const tle = this.tles[i]!;
+        if (!this.visibleOrbitTypes.has(tle.orbit_type)) continue;
+
         const satrec = this.satRecs[i];
         if (!satrec) continue;
 
@@ -127,7 +232,6 @@ export class GlobeScene {
           const posVel = satellite.propagate(satrec, date);
           if (!posVel.position || typeof posVel.position === "boolean") continue;
 
-          const gmst = satellite.gstime(date);
           const geo = satellite.eciToGeodetic(posVel.position, gmst);
           const lat = satellite.degreesLat(geo.latitude);
           const lng = satellite.degreesLong(geo.longitude);
@@ -135,16 +239,22 @@ export class GlobeScene {
 
           const [x, y, z] = geoToCartesian(lat, lng, altKm);
           entries.push({
-            id: `sat_${this.tles[i]!.norad_id}`,
+            id: `sat_${tle.norad_id}`,
+            index: i,
             x, y, z,
-            orbitType: this.tles[i]!.orbit_type,
+            lat, lng, altKm,
+            orbitType: tle.orbit_type,
+            name: tle.name,
+            constellation: tle.constellation,
           });
         } catch {
           continue;
         }
       }
 
+      this.lastPositions = entries;
       this.orbs.update(entries, elapsed);
+      this.updateSelectedRing();
     }
 
     this.renderer.render(this.scene, this.camera);
