@@ -40,7 +40,8 @@ export default function App() {
   const [displayTime, setDisplayTime] = useState("");
 
   // 視覺參數
-  const [showOrbits, setShowOrbits] = useState(true);
+  const [showTrails, setShowTrails] = useState(true);
+  const [showOrbits, setShowOrbits] = useState(false);
   const [orbitOpacity, setOrbitOpacity] = useState(0.35);
   const [orbScale, setOrbScale] = useState(1.0);
   const [visibleTypes, setVisibleTypes] = useState<Set<string>>(new Set(ALL_FILTER_TYPES));
@@ -213,6 +214,7 @@ export default function App() {
         orbits={orbits}
         getCurrentTime={getCurrentTime}
         visibleOrbitTypes={visibleTypes}
+        showTrails={showTrails}
         showOrbits={showOrbits}
         orbitOpacity={orbitOpacity}
         orbScale={orbScale}
@@ -270,10 +272,14 @@ export default function App() {
           </div>
 
           {/* 軌道線 */}
-          <div style={labelStyle}>Orbits</div>
+          <div style={labelStyle}>Display</div>
+          <label style={{ display: "flex", alignItems: "center", gap: 8, cursor: "pointer", marginBottom: 4 }}>
+            <input type="checkbox" checked={showTrails} onChange={(e) => setShowTrails(e.target.checked)} style={{ accentColor: "#4fc3f7", width: 14, height: 14 }} />
+            動態尾巴
+          </label>
           <label style={{ display: "flex", alignItems: "center", gap: 8, cursor: "pointer", marginBottom: 8 }}>
             <input type="checkbox" checked={showOrbits} onChange={(e) => setShowOrbits(e.target.checked)} style={{ accentColor: "#4fc3f7", width: 14, height: 14 }} />
-            Show orbit lines
+            靜態軌道線
           </label>
           <div style={{ display: "flex", justifyContent: "space-between", fontSize: 11 }}>
             <span>Opacity</span>

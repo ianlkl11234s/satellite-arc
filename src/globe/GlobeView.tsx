@@ -11,6 +11,7 @@ interface GlobeViewProps {
   orbits: Array<{ path: [number, number, number, number][]; orbitType: string }>;
   getCurrentTime: () => number;
   visibleOrbitTypes: Set<string>;
+  showTrails: boolean;
   showOrbits: boolean;
   orbitOpacity: number;
   orbScale: number;
@@ -23,6 +24,7 @@ export function GlobeView({
   orbits,
   getCurrentTime,
   visibleOrbitTypes,
+  showTrails,
   showOrbits,
   orbitOpacity,
   orbScale,
@@ -71,6 +73,10 @@ export function GlobeView({
   useEffect(() => {
     if (sceneRef.current) sceneRef.current.setVisibleOrbitTypes(visibleOrbitTypes);
   }, [visibleOrbitTypes]);
+
+  useEffect(() => {
+    if (sceneRef.current) sceneRef.current.setShowTrails(showTrails);
+  }, [showTrails]);
 
   useEffect(() => {
     if (sceneRef.current) sceneRef.current.setShowOrbits(showOrbits);

@@ -57,7 +57,8 @@ export class GlobeScene {
   private visibleOrbitTypes = new Set(["LEO", "MEO", "GEO", "HEO"]);
 
   // 視覺參數
-  showOrbits = true;
+  showTrails = true;
+  showOrbits = false;
   orbitOpacity = 0.35;
   orbScale = 1.0;
 
@@ -93,6 +94,7 @@ export class GlobeScene {
 
     this.orbs = new SatelliteOrbs(this.scene);
     this.orbits = new OrbitLines(this.scene);
+    this.orbits.setVisible(false); // 靜態軌道預設關
     this.trails = new TrailLines(this.scene, 13000, 10);
 
     const onResize = () => {
@@ -135,10 +137,14 @@ export class GlobeScene {
     this.trails.setOpacity(opacity * 1.5);
   }
 
+  setShowTrails(show: boolean) {
+    this.showTrails = show;
+    this.trails.setVisible(show);
+  }
+
   setShowOrbits(show: boolean) {
     this.showOrbits = show;
     this.orbits.setVisible(show);
-    this.trails.setVisible(show);
   }
 
   setOrbScale(scale: number) {
@@ -271,7 +277,7 @@ export class GlobeScene {
 
       // 計算動態尾巴（每 N 幀更新一次）
       this.trailUpdateCounter++;
-      if (this.showOrbits && this.trailUpdateCounter % this.trailUpdateInterval === 0) {
+      if (this.showTrails && this.trailUpdateCounter % this.trailUpdateInterval === 0) {
         const trailEntries: TrailEntry[] = [];
         for (let i = 0; i < this.tles.length; i++) {
           const tle = this.tles[i]!;
