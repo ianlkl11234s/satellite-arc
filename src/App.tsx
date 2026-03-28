@@ -25,6 +25,7 @@ function getFilterType(tle: SatelliteTLE): string {
 export default function App() {
   const [tles, setTles] = useState<SatelliteTLE[]>([]);
   const [loading, setLoading] = useState(true);
+  const [ready, setReady] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [speed, setSpeed] = useState(60);
   const [playing, setPlaying] = useState(true);
@@ -119,6 +120,14 @@ export default function App() {
     }));
   }, [filteredTles]);
 
+  // TLE 載入 + orbits 計算完成後才顯示
+  useEffect(() => {
+    if (!loading && tles.length > 0 && !ready) {
+      // 延遲一幀讓 orbits memo 完成
+      requestAnimationFrame(() => setReady(true));
+    }
+  }, [loading, tles.length, ready]);
+
   const getCurrentTime = useCallback(() => simTimeRef.current, []);
 
   // 時間推進
@@ -173,11 +182,13 @@ export default function App() {
 
   const visibleCount = filteredTles.length;
 
-  if (loading) {
+  if (!ready && !error) {
     return (
       <div style={{ width: "100vw", height: "100vh", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", background: "#020208", color: "#fff", fontFamily: "monospace" }}>
         <div style={{ width: 16, height: 16, borderRadius: "50%", background: "#4fc3f7", animation: "pulse 1s ease-in-out infinite", marginBottom: 20 }} />
-        <div style={{ fontSize: 16, opacity: 0.7 }}>Loading satellite data...</div>
+        <div style={{ fontSize: 16, opacity: 0.7 }}>
+          {loading ? "Loading satellite data..." : `Preparing ${tles.length.toLocaleString()} satellites...`}
+        </div>
         <style>{`@keyframes pulse { 0%,100% { opacity:0.3; transform:scale(0.8) } 50% { opacity:1; transform:scale(1.2) } }`}</style>
       </div>
     );
