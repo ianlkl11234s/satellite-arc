@@ -7,6 +7,7 @@ import { OrbitControls } from "three/addons/controls/OrbitControls.js";
 import { EarthMesh } from "./EarthMesh";
 import { SatelliteOrbs } from "./SatelliteOrbs";
 import { OrbitLines } from "./OrbitLines";
+import { TrailLines, type TrailEntry } from "./TrailLines";
 import { geoToCartesian } from "./coordinates";
 import type { SatelliteTLE } from "../data/satelliteLoader";
 import * as satellite from "satellite.js";
@@ -34,8 +35,16 @@ export class GlobeScene {
   private earth: EarthMesh;
   private orbs: SatelliteOrbs;
   private orbits: OrbitLines;
+  private trails: TrailLines;
   private animId = 0;
   private clock = new THREE.Clock();
+
+  /** 尾巴長度（取過去 N 個計算點，每點間隔 trailStepSec 秒） */
+  trailLength = 8;
+  trailStepSec = 30;
+  private trailUpdateCounter = 0;
+  /** 每 N 幀更新一次尾巴（避免每幀算 12K×8 = 96K 次 SGP4） */
+  private trailUpdateInterval = 10;
 
   // 外部回呼
   getCurrentTime: () => number = () => Date.now() / 1000;
@@ -84,6 +93,7 @@ export class GlobeScene {
 
     this.orbs = new SatelliteOrbs(this.scene);
     this.orbits = new OrbitLines(this.scene);
+    this.trails = new TrailLines(this.scene, 13000, 10);
 
     const onResize = () => {
       const w = container.clientWidth;
@@ -122,11 +132,13 @@ export class GlobeScene {
   setOrbitOpacity(opacity: number) {
     this.orbitOpacity = opacity;
     this.orbits.setOpacity(opacity);
+    this.trails.setOpacity(opacity * 1.5);
   }
 
   setShowOrbits(show: boolean) {
     this.showOrbits = show;
     this.orbits.setVisible(show);
+    this.trails.setVisible(show);
   }
 
   setOrbScale(scale: number) {
@@ -256,6 +268,43 @@ export class GlobeScene {
 
       this.lastPositions = entries;
       this.orbs.update(entries, elapsed);
+
+      // 計算動態尾巴（每 N 幀更新一次）
+      this.trailUpdateCounter++;
+      if (this.showOrbits && this.trailUpdateCounter % this.trailUpdateInterval === 0) {
+        const trailEntries: TrailEntry[] = [];
+        for (let i = 0; i < this.tles.length; i++) {
+          const tle = this.tles[i]!;
+          const filterType = tle.constellation === "Starlink" ? "Starlink" : tle.orbit_type;
+          if (!this.visibleOrbitTypes.has(filterType)) continue;
+
+          const satrec = this.satRecs[i];
+          if (!satrec) continue;
+
+          const points: Array<[number, number, number]> = [];
+          for (let step = 0; step < this.trailLength; step++) {
+            const pastDate = new Date((currentTime - step * this.trailStepSec) * 1000);
+            try {
+              const pv = satellite.propagate(satrec, pastDate);
+              if (!pv.position || typeof pv.position === "boolean") break;
+              const pastGmst = satellite.gstime(pastDate);
+              const g = satellite.eciToGeodetic(pv.position, pastGmst);
+              const [px, py, pz] = geoToCartesian(
+                satellite.degreesLat(g.latitude),
+                satellite.degreesLong(g.longitude),
+                g.height,
+              );
+              points.push([px, py, pz]);
+            } catch {
+              break;
+            }
+          }
+          if (points.length >= 2) {
+            trailEntries.push({ points, orbitType: filterType });
+          }
+        }
+        this.trails.update(trailEntries);
+      }
       this.updateSelectedRing();
     }
 
