@@ -39,12 +39,16 @@ export class GlobeScene {
   private animId = 0;
   private clock = new THREE.Clock();
 
-  /** 尾巴長度（取過去 N 個計算點，每點間隔 trailStepSec 秒） */
+  /** 尾巴長度 */
   trailLength = 8;
   trailStepSec = 30;
   private trailUpdateCounter = 0;
-  /** 每 N 幀更新一次尾巴（避免每幀算 12K×8 = 96K 次 SGP4） */
-  private trailUpdateInterval = 10;
+  private trailUpdateInterval = 30;
+
+  // 分批更新位置：每幀只算 1/N 的衛星，快取結果
+  private readonly BATCH_COUNT = 4;
+  private batchIndex = 0;
+  private positionCache = new Map<number, SatellitePosition>();
 
   // 外部回呼
   getCurrentTime: () => number = () => Date.now() / 1000;
@@ -252,17 +256,29 @@ export class GlobeScene {
     if (this.tles.length > 0) {
       const date = new Date(currentTime * 1000);
       const gmst = satellite.gstime(date);
-      const entries: SatellitePosition[] = [];
 
-      for (let i = 0; i < this.tles.length; i++) {
+      // 分批計算：每幀只算 1/BATCH_COUNT 的衛星
+      const batchSize = Math.ceil(this.tles.length / this.BATCH_COUNT);
+      const batchStart = this.batchIndex * batchSize;
+      const batchEnd = Math.min(batchStart + batchSize, this.tles.length);
+      this.batchIndex = (this.batchIndex + 1) % this.BATCH_COUNT;
+
+      for (let i = batchStart; i < batchEnd; i++) {
         const tle = this.tles[i]!;
-        // 篩選：Starlink 獨立為一個類型
         const filterType = tle.constellation === "Starlink" ? "Starlink" : tle.orbit_type;
-        if (!this.visibleOrbitTypes.has(filterType)) continue;
-        // 進階篩選：constellation + country
-        if (this.constellationFilter && !this.constellationFilter.has(tle.constellation || "Other")) continue;
+        if (!this.visibleOrbitTypes.has(filterType)) {
+          this.positionCache.delete(i);
+          continue;
+        }
+        if (this.constellationFilter && !this.constellationFilter.has(tle.constellation || "Other")) {
+          this.positionCache.delete(i);
+          continue;
+        }
         const country = this.countryMap[tle.constellation] ?? "其他";
-        if (this.countryFilter && !this.countryFilter.has(country)) continue;
+        if (this.countryFilter && !this.countryFilter.has(country)) {
+          this.positionCache.delete(i);
+          continue;
+        }
 
         const satrec = this.satRecs[i];
         if (!satrec) continue;
@@ -275,9 +291,9 @@ export class GlobeScene {
           const lat = satellite.degreesLat(geo.latitude);
           const lng = satellite.degreesLong(geo.longitude);
           const altKm = geo.height;
-
           const [x, y, z] = geoToCartesian(lat, lng, altKm);
-          entries.push({
+
+          this.positionCache.set(i, {
             id: `sat_${tle.norad_id}`,
             index: i,
             x, y, z,
@@ -291,6 +307,8 @@ export class GlobeScene {
         }
       }
 
+      // 從快取組裝完整的 entries
+      const entries = [...this.positionCache.values()];
       this.lastPositions = entries;
       this.orbs.update(entries, elapsed);
 
