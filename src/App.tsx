@@ -3,12 +3,26 @@ import { GlobeView } from "./globe/GlobeView";
 import type { SatelliteTLE } from "./data/satelliteLoader";
 import { loadSatelliteTLEs, convertSatellitesToFlights } from "./data/satelliteLoader";
 
+const SPEED_OPTIONS = [1, 10, 30, 60, 120, 300, 600];
+
 export default function App() {
   const [tles, setTles] = useState<SatelliteTLE[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [satelliteCount, setSatelliteCount] = useState(0);
-  const timeRef = useRef(Date.now() / 1000);
+  const [speed, setSpeed] = useState(60);
+  const [playing, setPlaying] = useState(true);
+  const [displayTime, setDisplayTime] = useState("");
+
+  // 模擬時間：baseReal 是按下 play 時的真實時間，baseSim 是對應的模擬時間
+  const baseRealRef = useRef(Date.now());
+  const baseSimRef = useRef(Date.now());
+  const speedRef = useRef(speed);
+  const playingRef = useRef(playing);
+  const simTimeRef = useRef(Date.now() / 1000);
+
+  speedRef.current = speed;
+  playingRef.current = playing;
 
   // 載入 TLE
   useEffect(() => {
@@ -36,21 +50,68 @@ export default function App() {
     }));
   }, [tles]);
 
-  // 時間回呼
+  // 時間回呼（GlobeScene 每幀呼叫）
   const getCurrentTime = useCallback(() => {
-    return timeRef.current;
+    return simTimeRef.current;
   }, []);
 
-  // 即時時間更新
+  // 時間推進迴圈
   useEffect(() => {
     let running = true;
+    let lastReal = Date.now();
+
     const tick = () => {
       if (!running) return;
-      timeRef.current = Date.now() / 1000;
+      const now = Date.now();
+      const dtReal = now - lastReal;
+      lastReal = now;
+
+      if (playingRef.current) {
+        // 模擬時間 += 真實經過時間 × 加速倍率
+        simTimeRef.current += (dtReal / 1000) * speedRef.current;
+      }
+
+      // 每 200ms 更新顯示時間（避免太頻繁的 setState）
       requestAnimationFrame(tick);
     };
     tick();
-    return () => { running = false; };
+
+    // 定時更新顯示時間
+    const displayInterval = setInterval(() => {
+      const d = new Date(simTimeRef.current * 1000);
+      setDisplayTime(
+        d.toLocaleString("zh-TW", {
+          timeZone: "Asia/Taipei",
+          month: "2-digit",
+          day: "2-digit",
+          hour: "2-digit",
+          minute: "2-digit",
+          second: "2-digit",
+          hour12: false,
+        }),
+      );
+    }, 200);
+
+    return () => {
+      running = false;
+      clearInterval(displayInterval);
+    };
+  }, []);
+
+  // 速度改變時重設基準
+  const handleSpeedChange = useCallback((newSpeed: number) => {
+    setSpeed(newSpeed);
+  }, []);
+
+  const handlePlayPause = useCallback(() => {
+    setPlaying((p) => !p);
+  }, []);
+
+  // 重設到現在
+  const handleResetTime = useCallback(() => {
+    simTimeRef.current = Date.now() / 1000;
+    baseRealRef.current = Date.now();
+    baseSimRef.current = Date.now();
   }, []);
 
   // 統計
@@ -168,19 +229,89 @@ export default function App() {
         ))}
       </div>
 
-      {/* 操作提示 */}
+      {/* 時間控制列 */}
       <div style={{
         position: "absolute",
-        bottom: 16,
+        bottom: 20,
         left: "50%",
         transform: "translateX(-50%)",
         zIndex: 10,
-        fontSize: 11,
-        color: "rgba(255,255,255,0.3)",
-        fontFamily: "monospace",
-        pointerEvents: "none",
+        display: "flex",
+        alignItems: "center",
+        gap: 12,
+        padding: "10px 20px",
+        background: "rgba(0,0,0,0.6)",
+        backdropFilter: "blur(12px)",
+        borderRadius: 10,
+        border: "1px solid rgba(255,255,255,0.1)",
       }}>
-        Drag to rotate · Scroll to zoom · Data from CelesTrak via Supabase
+        {/* Play/Pause */}
+        <button
+          onClick={handlePlayPause}
+          style={{
+            background: "none",
+            border: "1px solid rgba(255,255,255,0.3)",
+            borderRadius: 4,
+            color: "#fff",
+            padding: "4px 10px",
+            cursor: "pointer",
+            fontFamily: "monospace",
+            fontSize: 13,
+          }}
+        >
+          {playing ? "⏸" : "▶"}
+        </button>
+
+        {/* Speed selector */}
+        <div style={{ display: "flex", gap: 4 }}>
+          {SPEED_OPTIONS.map((s) => (
+            <button
+              key={s}
+              onClick={() => handleSpeedChange(s)}
+              style={{
+                background: speed === s ? "rgba(79,195,247,0.3)" : "rgba(255,255,255,0.05)",
+                border: `1px solid ${speed === s ? "rgba(79,195,247,0.6)" : "rgba(255,255,255,0.15)"}`,
+                borderRadius: 4,
+                color: speed === s ? "#4fc3f7" : "rgba(255,255,255,0.6)",
+                padding: "4px 8px",
+                cursor: "pointer",
+                fontFamily: "monospace",
+                fontSize: 11,
+                minWidth: 36,
+              }}
+            >
+              {s}x
+            </button>
+          ))}
+        </div>
+
+        {/* 時間顯示 */}
+        <div style={{
+          fontFamily: "monospace",
+          fontSize: 13,
+          color: "rgba(255,255,255,0.8)",
+          minWidth: 140,
+          textAlign: "center",
+        }}>
+          {displayTime}
+        </div>
+
+        {/* Reset to now */}
+        <button
+          onClick={handleResetTime}
+          style={{
+            background: "none",
+            border: "1px solid rgba(255,255,255,0.2)",
+            borderRadius: 4,
+            color: "rgba(255,255,255,0.5)",
+            padding: "4px 10px",
+            cursor: "pointer",
+            fontFamily: "monospace",
+            fontSize: 11,
+          }}
+        >
+          NOW
+        </button>
       </div>
     </div>
   );
