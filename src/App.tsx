@@ -222,12 +222,13 @@ export default function App() {
       />
 
       {/* Header（右移避開 sidebar） */}
-      <div style={{ position: "absolute", top: 12, left: 60, zIndex: 10, pointerEvents: "none" }}>
-        <h1 style={{ margin: 0, fontSize: 20, color: "#fff", fontFamily: "monospace", letterSpacing: 3, textShadow: "0 2px 8px rgba(0,0,0,0.8)" }}>
+      <div style={{ position: "absolute", top: 10, left: 60, zIndex: 10, pointerEvents: "none" }}>
+        <h1 style={{ margin: 0, fontSize: 18, color: "#fff", fontFamily: "monospace", letterSpacing: 2, textShadow: "0 2px 8px rgba(0,0,0,0.8)" }}>
           Satellite Tracker
         </h1>
-        <div style={{ fontSize: 11, color: "rgba(255,255,255,0.4)", fontFamily: "monospace", marginTop: 3 }}>
-          {visibleCount.toLocaleString()} satellites · dist {cameraInfo.distance.toFixed(1)} az {cameraInfo.azimuth}° el {cameraInfo.polar}°
+        <div style={{ fontSize: 11, color: "rgba(255,255,255,0.45)", fontFamily: "monospace", marginTop: 2, lineHeight: 1.6 }}>
+          {visibleCount.toLocaleString()} satellites · {displayTime}<br />
+          dist {cameraInfo.distance.toFixed(1)} az {cameraInfo.azimuth}° el {cameraInfo.polar}°
         </div>
       </div>
 
@@ -238,7 +239,7 @@ export default function App() {
         const satColor = colors[selectedSat.orbitType] ?? DEFAULT_COLORS[selectedSat.orbitType] ?? "#4fc3f7";
         return (
           <div style={{
-            position: "absolute", top: 8, right: 12, bottom: 80, width: 290, zIndex: 10,
+            position: "absolute", top: 8, right: 12, width: 290, maxHeight: "calc(100vh - 100px)", zIndex: 10,
             padding: "16px", overflowY: "auto",
             background: "rgba(8,8,20,0.75)", backdropFilter: "blur(16px)",
             borderRadius: 12, border: `1px solid ${satColor}44`,
