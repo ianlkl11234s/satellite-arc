@@ -89,17 +89,35 @@ export default function App() {
       .catch((err) => { setError(String(err)); setLoading(false); });
   }, []);
 
-  // 軌道弧線
+  // 篩選後的 TLE（所有篩選條件的交集）
+  const CONSTELLATION_COUNTRY: Record<string, string> = {
+    Starlink: "美國", OneWeb: "英國", GPS: "美國", Galileo: "歐盟",
+    BeiDou: "中國", GLONASS: "俄羅斯", Iridium: "美國", Globalstar: "美國",
+    Orbcomm: "美國", Planet: "美國", Spire: "美國", COSMOS: "俄羅斯", Qianfan: "中國",
+  };
+
+  const filteredTles = useMemo(() => {
+    return tles.filter((tle) => {
+      const ft = getFilterType(tle);
+      if (!visibleTypes.has(ft)) return false;
+      if (visibleConstellations.size > 0 && !visibleConstellations.has(tle.constellation || "Other")) return false;
+      const country = CONSTELLATION_COUNTRY[tle.constellation] ?? "其他";
+      if (visibleCountries.size > 0 && !visibleCountries.has(country)) return false;
+      return true;
+    });
+  }, [tles, visibleTypes, visibleConstellations, visibleCountries]);
+
+  // 軌道弧線（從篩選後的 TLE 建構）
   const orbits = useMemo(() => {
-    if (tles.length === 0) return [];
-    const flights = convertSatellitesToFlights(tles, new Date(), 60, 20);
+    if (filteredTles.length === 0) return [];
+    const flights = convertSatellitesToFlights(filteredTles, new Date(), 60, 20);
     const tleMap = new Map<string, string>();
-    for (const tle of tles) tleMap.set(`sat_${tle.norad_id}`, getFilterType(tle));
+    for (const tle of filteredTles) tleMap.set(`sat_${tle.norad_id}`, getFilterType(tle));
     return flights.map((f) => ({
       path: f.path,
       orbitType: tleMap.get(f.fr24_id.replace(/_\d+$/, "")) ?? f.aircraft_type,
     }));
-  }, [tles]);
+  }, [filteredTles]);
 
   const getCurrentTime = useCallback(() => simTimeRef.current, []);
 
@@ -153,9 +171,7 @@ export default function App() {
     }
   }, []);
 
-  const visibleCount = useMemo(() => {
-    return tles.filter((t) => visibleTypes.has(getFilterType(t))).length;
-  }, [tles, visibleTypes]);
+  const visibleCount = filteredTles.length;
 
   if (loading) {
     return (
