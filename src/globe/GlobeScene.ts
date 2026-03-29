@@ -64,7 +64,7 @@ export class GlobeScene {
   private satRecs: satellite.SatRec[] = [];
 
   // 篩選
-  private visibleOrbitTypes = new Set(["Starlink", "LEO", "MEO", "GEO", "HEO"]);
+  private visibleOrbitTypes = new Set(["starlink", "broadband", "phone", "geo_comms", "navigation", "earth_obs", "science", "military", "tech_demo", "other"]);
   constellationFilter: Set<string> | null = null;
   countryFilter: Set<string> | null = null;
   countryMap: Record<string, string> = {};

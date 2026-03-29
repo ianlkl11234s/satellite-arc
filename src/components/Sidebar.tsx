@@ -107,6 +107,26 @@ function IconBarChart() {
 
 /* ── Panel: Settings ───────────────────────────────────── */
 
+function ToggleSwitch({ checked, onChange }: { checked: boolean; onChange: (v: boolean) => void }) {
+  return (
+    <div onClick={() => onChange(!checked)} style={{
+      width: 36, height: 20, borderRadius: 10, cursor: "pointer",
+      background: checked ? "rgba(79,195,247,0.5)" : "rgba(255,255,255,0.12)",
+      border: `1px solid ${checked ? "rgba(79,195,247,0.6)" : "rgba(255,255,255,0.15)"}`,
+      position: "relative", transition: "background 0.2s",
+      flexShrink: 0,
+    }}>
+      <div style={{
+        width: 14, height: 14, borderRadius: "50%",
+        background: checked ? "#4fc3f7" : "rgba(255,255,255,0.4)",
+        position: "absolute", top: 2,
+        left: checked ? 19 : 2,
+        transition: "left 0.2s, background 0.2s",
+      }} />
+    </div>
+  );
+}
+
 function SettingsPanel(props: SidebarProps) {
   const catStats = useMemo(() => {
     const s: Record<string, number> = {};
@@ -118,40 +138,40 @@ function SettingsPanel(props: SidebarProps) {
 
   return (
     <>
-      <SectionHeader>Category</SectionHeader>
-      <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+      <SectionHeader>用途分類</SectionHeader>
+      <div style={{ display: "flex", flexDirection: "column", gap: 3 }}>
         {catOrder.map((cat) => {
           const info = CATEGORIES[cat]!;
           const active = props.visibleCategories.has(cat);
           const count = catStats[cat] ?? 0;
           if (count === 0) return null;
           return (
-            <label key={cat} style={{ display: "flex", alignItems: "center", gap: 8, cursor: "pointer", fontSize: 12 }}>
+            <label key={cat} style={{ display: "flex", alignItems: "center", gap: 7, cursor: "pointer", fontSize: 13, padding: "2px 0" }}>
+              <div style={{ width: 7, height: 7, borderRadius: "50%", background: props.colors[cat] ?? info.color, opacity: active ? 1 : 0.25, flexShrink: 0 }} />
+              <span style={{ opacity: active ? 0.9 : 0.35, flex: 1 }}>{info.zh}</span>
+              <span style={{ opacity: 0.25, fontSize: 11, marginRight: 4 }}>{count.toLocaleString()}</span>
               <input type="checkbox" checked={active} onChange={() => props.onToggleCategory(cat)}
-                style={{ accentColor: props.colors[cat] ?? info.color, width: 14, height: 14 }} />
-              <div style={{ width: 8, height: 8, borderRadius: "50%", background: props.colors[cat] ?? info.color, opacity: active ? 1 : 0.3 }} />
-              <span style={{ opacity: active ? 1 : 0.4, flex: 1 }}>{categoryLabel(cat)}</span>
-              <span style={{ opacity: 0.3, fontSize: 10 }}>{count.toLocaleString()}</span>
+                style={{ accentColor: props.colors[cat] ?? info.color, width: 13, height: 13, cursor: "pointer" }} />
             </label>
           );
         })}
       </div>
 
-      <SectionHeader>Display</SectionHeader>
-      <label style={{ display: "flex", alignItems: "center", gap: 8, cursor: "pointer", marginBottom: 4, fontSize: 12 }}>
-        <input type="checkbox" checked={props.showTrails} onChange={(e) => props.onShowTrailsChange(e.target.checked)} style={{ accentColor: T.ACCENT, width: 14, height: 14 }} />
-        Dynamic Trails
-      </label>
-      <label style={{ display: "flex", alignItems: "center", gap: 8, cursor: "pointer", marginBottom: 8, fontSize: 12 }}>
-        <input type="checkbox" checked={props.showOrbits} onChange={(e) => props.onShowOrbitsChange(e.target.checked)} style={{ accentColor: T.ACCENT, width: 14, height: 14 }} />
-        Static Orbit Lines
-      </label>
+      <SectionHeader>顯示</SectionHeader>
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 6 }}>
+        <span style={{ fontSize: 13 }}>動態尾巴</span>
+        <ToggleSwitch checked={props.showTrails} onChange={props.onShowTrailsChange} />
+      </div>
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 8 }}>
+        <span style={{ fontSize: 13 }}>靜態軌道線</span>
+        <ToggleSwitch checked={props.showOrbits} onChange={props.onShowOrbitsChange} />
+      </div>
 
-      <SectionHeader>Visual</SectionHeader>
-      <SliderRow label="Trail Length" value={props.trailLength} min={3} max={20} step={1} format={(v) => `${v}`} onChange={props.onTrailLengthChange} />
-      <SliderRow label="Point Size" value={props.orbScale} min={0.3} max={3} step={0.1} format={(v) => `${v.toFixed(1)}x`} onChange={props.onOrbScaleChange} />
-      <SliderRow label="Point Opacity" value={props.orbOpacity} min={0.1} max={1} step={0.05} format={(v) => v.toFixed(2)} onChange={props.onOrbOpacityChange} />
-      <SliderRow label="Trail Opacity" value={props.orbitOpacity} min={0.05} max={0.8} step={0.05} format={(v) => v.toFixed(2)} onChange={props.onOrbitOpacityChange} />
+      <SectionHeader>視覺參數</SectionHeader>
+      <SliderRow label="尾巴長度" value={props.trailLength} min={3} max={20} step={1} format={(v) => `${v} 步`} onChange={props.onTrailLengthChange} />
+      <SliderRow label="衛星大小" value={props.orbScale} min={0.3} max={3} step={0.1} format={(v) => `${v.toFixed(1)}x`} onChange={props.onOrbScaleChange} />
+      <SliderRow label="衛星不透明度" value={props.orbOpacity} min={0.1} max={1} step={0.05} format={(v) => v.toFixed(2)} onChange={props.onOrbOpacityChange} />
+      <SliderRow label="軌跡不透明度" value={props.orbitOpacity} min={0.05} max={0.8} step={0.05} format={(v) => v.toFixed(2)} onChange={props.onOrbitOpacityChange} />
     </>
   );
 }
@@ -326,9 +346,9 @@ function FiltersPanel(props: SidebarProps) {
 
 const COLOR_PRESETS: Record<string, { name: string; colors: Record<string, string> }> = {
   default: { name: "Default", colors: Object.fromEntries(Object.entries(CATEGORIES).map(([k, v]) => [k, v.color])) },
-  warm: { name: "Warm", colors: { broadband: "#ff8a65", phone: "#ffab40", geo_comms: "#ffd54f", navigation: "#fff176", earth_obs: "#aed581", science: "#e6ee9c", military: "#ef9a9a", tech_demo: "#bcaaa4", other: "#a1887f" } },
-  cool: { name: "Cool", colors: { broadband: "#4dd0e1", phone: "#4fc3f7", geo_comms: "#64b5f6", navigation: "#7986cb", earth_obs: "#9fa8da", science: "#b39ddb", military: "#ce93d8", tech_demo: "#90a4ae", other: "#78909c" } },
-  mono: { name: "Mono", colors: { broadband: "#e0e0e0", phone: "#bdbdbd", geo_comms: "#9e9e9e", navigation: "#eeeeee", earth_obs: "#b0bec5", science: "#cfd8dc", military: "#757575", tech_demo: "#616161", other: "#424242" } },
+  warm: { name: "Warm", colors: { starlink: "#ffcc80", broadband: "#ff8a65", phone: "#ffab40", geo_comms: "#ffd54f", navigation: "#fff176", earth_obs: "#aed581", science: "#e6ee9c", military: "#ef9a9a", tech_demo: "#bcaaa4", other: "#a1887f" } },
+  cool: { name: "Cool", colors: { starlink: "#80deea", broadband: "#4dd0e1", phone: "#4fc3f7", geo_comms: "#64b5f6", navigation: "#7986cb", earth_obs: "#9fa8da", science: "#b39ddb", military: "#ce93d8", tech_demo: "#90a4ae", other: "#78909c" } },
+  mono: { name: "Mono", colors: { starlink: "#f5f5f5", broadband: "#e0e0e0", phone: "#bdbdbd", geo_comms: "#9e9e9e", navigation: "#eeeeee", earth_obs: "#b0bec5", science: "#cfd8dc", military: "#757575", tech_demo: "#616161", other: "#424242" } },
 };
 
 function ColorsPanel(props: SidebarProps) {
@@ -504,10 +524,10 @@ function StatsPanel(props: SidebarProps) {
 /* ── Main Component ────────────────────────────────────── */
 
 const PANELS: Array<{ id: PanelId; icon: () => ReactNode; title: string }> = [
-  { id: "settings", icon: IconSettings, title: "Settings" },
-  { id: "filters", icon: IconLayers, title: "Filters" },
-  { id: "colors", icon: IconPalette, title: "Colors" },
-  { id: "stats", icon: IconBarChart, title: "Statistics" },
+  { id: "settings", icon: IconSettings, title: "設定" },
+  { id: "filters", icon: IconLayers, title: "篩選圖層" },
+  { id: "colors", icon: IconPalette, title: "配色主題" },
+  { id: "stats", icon: IconBarChart, title: "統計" },
 ];
 
 export function Sidebar(props: SidebarProps) {
