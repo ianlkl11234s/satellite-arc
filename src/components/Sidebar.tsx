@@ -146,13 +146,11 @@ function SettingsPanel(props: SidebarProps) {
           const count = catStats[cat] ?? 0;
           if (count === 0) return null;
           return (
-            <label key={cat} style={{ display: "flex", alignItems: "center", gap: 7, cursor: "pointer", fontSize: 13, padding: "2px 0" }}>
-              <div style={{ width: 7, height: 7, borderRadius: "50%", background: props.colors[cat] ?? info.color, opacity: active ? 1 : 0.25, flexShrink: 0 }} />
-              <span style={{ opacity: active ? 0.9 : 0.35, flex: 1 }}>{info.zh}</span>
-              <span style={{ opacity: 0.25, fontSize: 11, marginRight: 4 }}>{count.toLocaleString()}</span>
-              <input type="checkbox" checked={active} onChange={() => props.onToggleCategory(cat)}
-                style={{ accentColor: props.colors[cat] ?? info.color, width: 13, height: 13, cursor: "pointer" }} />
-            </label>
+            <div key={cat} onClick={() => props.onToggleCategory(cat)} style={{ display: "flex", alignItems: "center", gap: 7, cursor: "pointer", fontSize: 13, padding: "3px 0" }}>
+              <div style={{ width: 7, height: 7, borderRadius: "50%", background: props.colors[cat] ?? info.color, opacity: active ? 1 : 0.2, flexShrink: 0 }} />
+              <span style={{ opacity: active ? 0.9 : 0.3, flex: 1 }}>{info.zh}</span>
+              <span style={{ opacity: active ? 0.35 : 0.15, fontSize: 11 }}>{count.toLocaleString()}</span>
+            </div>
           );
         })}
       </div>
