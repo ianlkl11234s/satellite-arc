@@ -35,17 +35,24 @@ export interface SatelliteTLE {
 }
 
 /** 用途分類定義 */
-export const CATEGORIES: Record<string, { zh: string; color: string }> = {
-  broadband:  { zh: "寬頻通訊", color: "#81d4fa" },
-  phone:      { zh: "衛星電話/IoT", color: "#4fc3f7" },
-  geo_comms:  { zh: "同步軌道通訊", color: "#ffb74d" },
-  navigation: { zh: "導航定位", color: "#ce93d8" },
-  earth_obs:  { zh: "地球觀測", color: "#81c784" },
-  science:    { zh: "科學/太空站", color: "#fff176" },
-  military:   { zh: "軍事/情報", color: "#ef5350" },
-  tech_demo:  { zh: "技術展示", color: "#b0bec5" },
-  other:      { zh: "其他", color: "#78909c" },
+export const CATEGORIES: Record<string, { en: string; zh: string; color: string }> = {
+  broadband:  { en: "Broadband", zh: "寬頻通訊", color: "#81d4fa" },
+  phone:      { en: "Sat Phone / IoT", zh: "衛星電話", color: "#4fc3f7" },
+  geo_comms:  { en: "GEO Comms", zh: "同步軌道通訊", color: "#ffb74d" },
+  navigation: { en: "Navigation", zh: "導航定位", color: "#ce93d8" },
+  earth_obs:  { en: "Earth Observation", zh: "地球觀測", color: "#81c784" },
+  science:    { en: "Science / Station", zh: "科學/太空站", color: "#fff176" },
+  military:   { en: "Military / Intel", zh: "軍事/情報", color: "#ef5350" },
+  tech_demo:  { en: "Tech Demo", zh: "技術展示", color: "#b0bec5" },
+  other:      { en: "Other", zh: "其他", color: "#78909c" },
 };
+
+/** 顯示用標籤：English（中文） */
+export function categoryLabel(cat: string): string {
+  const info = CATEGORIES[cat];
+  if (!info) return cat;
+  return `${info.en}（${info.zh}）`;
+}
 
 /** 軌道類型 → 顏色對應（用於前端分色） */
 export const ORBIT_COLORS: Record<string, string> = {

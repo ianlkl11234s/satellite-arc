@@ -4,7 +4,7 @@
 
 import { useState, useMemo, type ReactNode } from "react";
 import type { SatelliteTLE } from "../data/satelliteLoader";
-import { CATEGORIES } from "../data/satelliteLoader";
+import { CATEGORIES, categoryLabel } from "../data/satelliteLoader";
 
 type PanelId = "settings" | "filters" | "colors" | "stats";
 
@@ -118,7 +118,7 @@ function SettingsPanel(props: SidebarProps) {
 
   return (
     <>
-      <SectionHeader>用途分類</SectionHeader>
+      <SectionHeader>Category</SectionHeader>
       <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
         {catOrder.map((cat) => {
           const info = CATEGORIES[cat]!;
@@ -130,28 +130,28 @@ function SettingsPanel(props: SidebarProps) {
               <input type="checkbox" checked={active} onChange={() => props.onToggleCategory(cat)}
                 style={{ accentColor: props.colors[cat] ?? info.color, width: 14, height: 14 }} />
               <div style={{ width: 8, height: 8, borderRadius: "50%", background: props.colors[cat] ?? info.color, opacity: active ? 1 : 0.3 }} />
-              <span style={{ opacity: active ? 1 : 0.4, flex: 1 }}>{info.zh}</span>
+              <span style={{ opacity: active ? 1 : 0.4, flex: 1 }}>{categoryLabel(cat)}</span>
               <span style={{ opacity: 0.3, fontSize: 10 }}>{count.toLocaleString()}</span>
             </label>
           );
         })}
       </div>
 
-      <SectionHeader>顯示</SectionHeader>
+      <SectionHeader>Display</SectionHeader>
       <label style={{ display: "flex", alignItems: "center", gap: 8, cursor: "pointer", marginBottom: 4, fontSize: 12 }}>
         <input type="checkbox" checked={props.showTrails} onChange={(e) => props.onShowTrailsChange(e.target.checked)} style={{ accentColor: T.ACCENT, width: 14, height: 14 }} />
-        動態尾巴
+        Dynamic Trails
       </label>
       <label style={{ display: "flex", alignItems: "center", gap: 8, cursor: "pointer", marginBottom: 8, fontSize: 12 }}>
         <input type="checkbox" checked={props.showOrbits} onChange={(e) => props.onShowOrbitsChange(e.target.checked)} style={{ accentColor: T.ACCENT, width: 14, height: 14 }} />
-        靜態軌道線
+        Static Orbit Lines
       </label>
 
-      <SectionHeader>視覺參數</SectionHeader>
-      <SliderRow label="尾巴長度" value={props.trailLength} min={3} max={20} step={1} format={(v) => `${v} 步`} onChange={props.onTrailLengthChange} />
-      <SliderRow label="衛星大小" value={props.orbScale} min={0.3} max={3} step={0.1} format={(v) => `${v.toFixed(1)}x`} onChange={props.onOrbScaleChange} />
-      <SliderRow label="衛星不透明度" value={props.orbOpacity} min={0.1} max={1} step={0.05} format={(v) => v.toFixed(2)} onChange={props.onOrbOpacityChange} />
-      <SliderRow label="軌跡不透明度" value={props.orbitOpacity} min={0.05} max={0.8} step={0.05} format={(v) => v.toFixed(2)} onChange={props.onOrbitOpacityChange} />
+      <SectionHeader>Visual</SectionHeader>
+      <SliderRow label="Trail Length" value={props.trailLength} min={3} max={20} step={1} format={(v) => `${v}`} onChange={props.onTrailLengthChange} />
+      <SliderRow label="Point Size" value={props.orbScale} min={0.3} max={3} step={0.1} format={(v) => `${v.toFixed(1)}x`} onChange={props.onOrbScaleChange} />
+      <SliderRow label="Point Opacity" value={props.orbOpacity} min={0.1} max={1} step={0.05} format={(v) => v.toFixed(2)} onChange={props.onOrbOpacityChange} />
+      <SliderRow label="Trail Opacity" value={props.orbitOpacity} min={0.05} max={0.8} step={0.05} format={(v) => v.toFixed(2)} onChange={props.onOrbitOpacityChange} />
     </>
   );
 }
@@ -198,16 +198,16 @@ function FiltersPanel(props: SidebarProps) {
 
   const catOrder = Object.keys(CATEGORIES);
   const tabs = [
-    { key: "system" as const, label: "衛星系統" },
-    { key: "country" as const, label: "國家" },
-    { key: "purpose" as const, label: "用途" },
+    { key: "system" as const, label: "System" },
+    { key: "country" as const, label: "Country" },
+    { key: "purpose" as const, label: "Purpose" },
   ];
 
   return (
     <>
       {/* 搜尋框 */}
       <input
-        type="text" placeholder="搜尋衛星、星座、國家..."
+        type="text" placeholder="Search satellites, constellations..."
         value={search} onChange={(e) => setSearch(e.target.value)}
         style={{
           width: "100%", padding: "7px 10px", marginBottom: 10,
@@ -239,7 +239,7 @@ function FiltersPanel(props: SidebarProps) {
             if (!constellations || constellations.size === 0) return null;
             // 搜尋過濾
             const filteredEntries = [...constellations.entries()].filter(([name]) =>
-              !searchLower || name.toLowerCase().includes(searchLower) || info.zh.includes(search)
+              !searchLower || name.toLowerCase().includes(searchLower) || info.zh.includes(search) || info.en.toLowerCase().includes(searchLower)
             );
             if (searchLower && filteredEntries.length === 0) return null;
             const totalCount = [...constellations.values()].reduce((a, b) => a + b, 0);
@@ -253,7 +253,7 @@ function FiltersPanel(props: SidebarProps) {
                   border: "none", borderRadius: 4, cursor: "pointer", color: T.TEXT, fontSize: 12, fontFamily: "monospace", textAlign: "left",
                 }}>
                   <div style={{ width: 6, height: 6, borderRadius: "50%", background: props.colors[cat] ?? info.color, flexShrink: 0 }} />
-                  <span style={{ flex: 1, fontWeight: isExpanded ? 600 : 400 }}>{info.zh}</span>
+                  <span style={{ flex: 1, fontWeight: isExpanded ? 600 : 400 }}>{categoryLabel(cat)}</span>
                   <span style={{ opacity: 0.3, fontSize: 10 }}>{totalCount.toLocaleString()}</span>
                   <span style={{ opacity: 0.4, fontSize: 10 }}>{isExpanded ? "▼" : "▶"}</span>
                 </button>
@@ -312,11 +312,11 @@ function FiltersPanel(props: SidebarProps) {
         <button onClick={() => { props.onSelectAllConstellations?.(); props.onSelectAllCountries?.(); }} style={{
           flex: 1, padding: "5px 0", fontSize: 10, fontFamily: "monospace",
           border: `1px solid ${T.BORDER}`, borderRadius: 4, background: "transparent", color: T.DIM, cursor: "pointer",
-        }}>全選</button>
+        }}>Select All</button>
         <button onClick={() => { props.onClearConstellations?.(); props.onClearCountries?.(); }} style={{
           flex: 1, padding: "5px 0", fontSize: 10, fontFamily: "monospace",
           border: `1px solid ${T.BORDER}`, borderRadius: 4, background: "transparent", color: T.DIM, cursor: "pointer",
-        }}>清除</button>
+        }}>Clear</button>
       </div>
     </>
   );
@@ -325,16 +325,16 @@ function FiltersPanel(props: SidebarProps) {
 /* ── Panel: Colors ─────────────────────────────────────── */
 
 const COLOR_PRESETS: Record<string, { name: string; colors: Record<string, string> }> = {
-  default: { name: "預設", colors: Object.fromEntries(Object.entries(CATEGORIES).map(([k, v]) => [k, v.color])) },
-  warm: { name: "暖色", colors: { broadband: "#ff8a65", phone: "#ffab40", geo_comms: "#ffd54f", navigation: "#fff176", earth_obs: "#aed581", science: "#e6ee9c", military: "#ef9a9a", tech_demo: "#bcaaa4", other: "#a1887f" } },
-  cool: { name: "冷色", colors: { broadband: "#4dd0e1", phone: "#4fc3f7", geo_comms: "#64b5f6", navigation: "#7986cb", earth_obs: "#9fa8da", science: "#b39ddb", military: "#ce93d8", tech_demo: "#90a4ae", other: "#78909c" } },
-  mono: { name: "單色", colors: { broadband: "#e0e0e0", phone: "#bdbdbd", geo_comms: "#9e9e9e", navigation: "#eeeeee", earth_obs: "#b0bec5", science: "#cfd8dc", military: "#757575", tech_demo: "#616161", other: "#424242" } },
+  default: { name: "Default", colors: Object.fromEntries(Object.entries(CATEGORIES).map(([k, v]) => [k, v.color])) },
+  warm: { name: "Warm", colors: { broadband: "#ff8a65", phone: "#ffab40", geo_comms: "#ffd54f", navigation: "#fff176", earth_obs: "#aed581", science: "#e6ee9c", military: "#ef9a9a", tech_demo: "#bcaaa4", other: "#a1887f" } },
+  cool: { name: "Cool", colors: { broadband: "#4dd0e1", phone: "#4fc3f7", geo_comms: "#64b5f6", navigation: "#7986cb", earth_obs: "#9fa8da", science: "#b39ddb", military: "#ce93d8", tech_demo: "#90a4ae", other: "#78909c" } },
+  mono: { name: "Mono", colors: { broadband: "#e0e0e0", phone: "#bdbdbd", geo_comms: "#9e9e9e", navigation: "#eeeeee", earth_obs: "#b0bec5", science: "#cfd8dc", military: "#757575", tech_demo: "#616161", other: "#424242" } },
 };
 
 function ColorsPanel(props: SidebarProps) {
   return (
     <>
-      <SectionHeader>配色主題</SectionHeader>
+      <SectionHeader>Presets</SectionHeader>
       <div style={{ display: "flex", gap: 8, marginBottom: 14 }}>
         {Object.entries(COLOR_PRESETS).map(([key, preset]) => (
           <button key={key} onClick={() => {
@@ -356,13 +356,13 @@ function ColorsPanel(props: SidebarProps) {
         ))}
       </div>
 
-      <SectionHeader>自訂配色</SectionHeader>
+      <SectionHeader>Custom Colors</SectionHeader>
       <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
         {Object.entries(CATEGORIES).map(([cat, info]) => (
           <div key={cat} style={{ display: "flex", alignItems: "center", gap: 10, fontSize: 12 }}>
             <input type="color" value={props.colors[cat] ?? info.color} onChange={(e) => props.onColorChange(cat, e.target.value)}
               style={{ width: 24, height: 24, border: "none", borderRadius: 4, cursor: "pointer", background: "none", padding: 0 }} />
-            <span style={{ flex: 1, opacity: 0.85 }}>{info.zh}</span>
+            <span style={{ flex: 1, opacity: 0.85 }}>{categoryLabel(cat)}</span>
           </div>
         ))}
       </div>
@@ -438,19 +438,19 @@ function StatsPanel(props: SidebarProps) {
 
   return (
     <>
-      <SectionHeader>統計</SectionHeader>
+      <SectionHeader>Overview</SectionHeader>
       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8, marginBottom: 14 }}>
         <div style={{ background: "rgba(255,255,255,0.04)", borderRadius: 8, padding: "12px", textAlign: "center" }}>
           <div style={{ fontSize: 22, fontWeight: 700, color: T.ACCENT }}>{total.toLocaleString()}</div>
-          <div style={{ fontSize: 10, color: T.DIM, marginTop: 2 }}>追蹤中衛星</div>
+          <div style={{ fontSize: 10, color: T.DIM, marginTop: 2 }}>Tracked</div>
         </div>
         <div style={{ background: "rgba(255,255,255,0.04)", borderRadius: 8, padding: "12px", textAlign: "center" }}>
           <div style={{ fontSize: 22, fontWeight: 700, color: "#81c784" }}>{visible.toLocaleString()}</div>
-          <div style={{ fontSize: 10, color: T.DIM, marginTop: 2 }}>目前顯示</div>
+          <div style={{ fontSize: 10, color: T.DIM, marginTop: 2 }}>Visible</div>
         </div>
       </div>
 
-      <SectionHeader>軌道分佈</SectionHeader>
+      <SectionHeader>Orbit Distribution</SectionHeader>
       {byOrbit.map(([orbit, count]) => {
         const pct = total > 0 ? (count / total * 100) : 0;
         return (
@@ -466,7 +466,7 @@ function StatsPanel(props: SidebarProps) {
         );
       })}
 
-      <SectionHeader>用途分佈</SectionHeader>
+      <SectionHeader>Category Distribution</SectionHeader>
       <div style={{ display: "flex", gap: 12, alignItems: "center", marginBottom: 8 }}>
         <DonutChart data={donutData} size={90} />
         <div style={{ display: "flex", flexDirection: "column", gap: 3, fontSize: 10 }}>
@@ -476,7 +476,7 @@ function StatsPanel(props: SidebarProps) {
             return (
               <div key={cat} style={{ display: "flex", alignItems: "center", gap: 5 }}>
                 <div style={{ width: 6, height: 6, borderRadius: 1, background: props.colors[cat] ?? info?.color ?? T.ACCENT, flexShrink: 0 }} />
-                <span style={{ opacity: 0.7 }}>{info?.zh ?? cat}</span>
+                <span style={{ opacity: 0.7 }}>{info?.en ?? cat}</span>
                 <span style={{ opacity: 0.35 }}>{pct}%</span>
               </div>
             );
@@ -484,7 +484,7 @@ function StatsPanel(props: SidebarProps) {
         </div>
       </div>
 
-      <SectionHeader>主要營運商</SectionHeader>
+      <SectionHeader>Top Operators</SectionHeader>
       <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
         {topOperators.map(([op, count]) => (
           <div key={op} style={{ display: "flex", justifyContent: "space-between", fontSize: 11 }}>
@@ -504,10 +504,10 @@ function StatsPanel(props: SidebarProps) {
 /* ── Main Component ────────────────────────────────────── */
 
 const PANELS: Array<{ id: PanelId; icon: () => ReactNode; title: string }> = [
-  { id: "settings", icon: IconSettings, title: "設定" },
-  { id: "filters", icon: IconLayers, title: "篩選圖層" },
-  { id: "colors", icon: IconPalette, title: "顏色調整" },
-  { id: "stats", icon: IconBarChart, title: "統計" },
+  { id: "settings", icon: IconSettings, title: "Settings" },
+  { id: "filters", icon: IconLayers, title: "Filters" },
+  { id: "colors", icon: IconPalette, title: "Colors" },
+  { id: "stats", icon: IconBarChart, title: "Statistics" },
 ];
 
 export function Sidebar(props: SidebarProps) {

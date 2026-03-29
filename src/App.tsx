@@ -275,36 +275,36 @@ export default function App() {
             <div style={{ display: "grid", gridTemplateColumns: "auto 1fr", gap: "5px 14px", opacity: 0.9 }}>
               <span style={{ opacity: 0.4 }}>NORAD ID</span>
               <span>{selectedSat.id.replace("sat_", "")}</span>
-              <span style={{ opacity: 0.4 }}>軌道類型</span>
-              <span><span style={{ color: satColor }}>{catInfo?.zh ?? selectedSat.orbitType}</span>{orbitLabel && <span style={{ opacity: 0.4 }}> ({orbitLabel.zh})</span>}</span>
-              {orbitLabel && <><span style={{ opacity: 0.4 }}></span><span style={{ opacity: 0.35, fontSize: 10 }}>{orbitLabel.desc}</span></>}
-              <span style={{ opacity: 0.4 }}>星座/系統</span>
+              <span style={{ opacity: 0.4 }}>Category</span>
+              <span><span style={{ color: satColor }}>{catInfo?.en ?? selectedSat.orbitType}</span>{catInfo && <span style={{ opacity: 0.4 }}>（{catInfo.zh}）</span>}</span>
+              {orbitLabel && <><span style={{ opacity: 0.4 }}>Orbit</span><span>{orbitLabel.zh}</span></>}
+              <span style={{ opacity: 0.4 }}>Constellation</span>
               <span>{selectedSat.constellation || (info?.zhName ?? "—")}</span>
 
-              {catalogLoading && <><span style={{ opacity: 0.4 }}>載入中</span><span style={{ opacity: 0.35 }}>...</span></>}
+              {catalogLoading && <><span style={{ opacity: 0.4 }}>Loading</span><span style={{ opacity: 0.35 }}>...</span></>}
 
               {catalog && (
                 <>
-                  <span style={{ opacity: 0.4 }}>營運商</span><span>{catalog.operator ?? "—"}</span>
-                  <span style={{ opacity: 0.4 }}>國家</span><span>{catalog.country_operator ?? info?.country ?? "—"}</span>
-                  <span style={{ opacity: 0.4 }}>用途</span><span>{catalog.purpose ?? info?.purpose ?? "—"}</span>
-                  {catalog.detailed_purpose && <><span style={{ opacity: 0.4 }}>詳細用途</span><span style={{ fontSize: 11 }}>{catalog.detailed_purpose}</span></>}
-                  <span style={{ opacity: 0.4 }}>使用者</span><span>{catalog.users ?? "—"}</span>
-                  {catalog.launch_date && <><span style={{ opacity: 0.4 }}>發射日期</span><span>{catalog.launch_date}</span></>}
-                  {catalog.launch_mass_kg && <><span style={{ opacity: 0.4 }}>發射質量</span><span>{catalog.launch_mass_kg.toLocaleString()} kg</span></>}
-                  {catalog.expected_lifetime_yrs && <><span style={{ opacity: 0.4 }}>預期壽命</span><span>{catalog.expected_lifetime_yrs} 年</span></>}
-                  {catalog.contractor && <><span style={{ opacity: 0.4 }}>製造商</span><span style={{ fontSize: 11 }}>{catalog.contractor}</span></>}
-                  {catalog.launch_vehicle && <><span style={{ opacity: 0.4 }}>發射載具</span><span style={{ fontSize: 11 }}>{catalog.launch_vehicle}</span></>}
-                  {catalog.launch_site && <><span style={{ opacity: 0.4 }}>發射地點</span><span style={{ fontSize: 11 }}>{catalog.launch_site}</span></>}
+                  <span style={{ opacity: 0.4 }}>Operator</span><span>{catalog.operator ?? "—"}</span>
+                  <span style={{ opacity: 0.4 }}>Country</span><span>{catalog.country_operator ?? info?.country ?? "—"}</span>
+                  <span style={{ opacity: 0.4 }}>Purpose</span><span>{catalog.purpose ?? info?.purpose ?? "—"}</span>
+                  {catalog.detailed_purpose && <><span style={{ opacity: 0.4 }}>Detail</span><span style={{ fontSize: 11 }}>{catalog.detailed_purpose}</span></>}
+                  <span style={{ opacity: 0.4 }}>Users</span><span>{catalog.users ?? "—"}</span>
+                  {catalog.launch_date && <><span style={{ opacity: 0.4 }}>Launched</span><span>{catalog.launch_date}</span></>}
+                  {catalog.launch_mass_kg && <><span style={{ opacity: 0.4 }}>Mass</span><span>{catalog.launch_mass_kg.toLocaleString()} kg</span></>}
+                  {catalog.expected_lifetime_yrs && <><span style={{ opacity: 0.4 }}>Lifetime</span><span>{catalog.expected_lifetime_yrs} yrs</span></>}
+                  {catalog.contractor && <><span style={{ opacity: 0.4 }}>Contractor</span><span style={{ fontSize: 11 }}>{catalog.contractor}</span></>}
+                  {catalog.launch_vehicle && <><span style={{ opacity: 0.4 }}>Vehicle</span><span style={{ fontSize: 11 }}>{catalog.launch_vehicle}</span></>}
+                  {catalog.launch_site && <><span style={{ opacity: 0.4 }}>Launch Site</span><span style={{ fontSize: 11 }}>{catalog.launch_site}</span></>}
                 </>
               )}
-              {!catalog && !catalogLoading && !info && <><span style={{ opacity: 0.4 }}>用途</span><span style={{ opacity: 0.35 }}>無 UCS 目錄資料</span></>}
-              {!catalog && !catalogLoading && info && <><span style={{ opacity: 0.4 }}>用途</span><span>{info.purpose}</span><span style={{ opacity: 0.4 }}>國家</span><span>{info.country}</span></>}
+              {!catalog && !catalogLoading && !info && <><span style={{ opacity: 0.4 }}>Purpose</span><span style={{ opacity: 0.35 }}>No UCS catalog data</span></>}
+              {!catalog && !catalogLoading && info && <><span style={{ opacity: 0.4 }}>Purpose</span><span>{info.purpose}</span><span style={{ opacity: 0.4 }}>Country</span><span>{info.country}</span></>}
 
-              <span style={{ opacity: 0.4, marginTop: 6, borderTop: "1px solid rgba(255,255,255,0.08)", paddingTop: 6 }}>高度</span>
+              <span style={{ opacity: 0.4, marginTop: 6, borderTop: "1px solid rgba(255,255,255,0.08)", paddingTop: 6 }}>Altitude</span>
               <span style={{ marginTop: 6, borderTop: "1px solid rgba(255,255,255,0.08)", paddingTop: 6 }}>{selectedSat.altKm.toFixed(1)} km</span>
-              <span style={{ opacity: 0.4 }}>緯度</span><span>{selectedSat.lat.toFixed(4)}°</span>
-              <span style={{ opacity: 0.4 }}>經度</span><span>{selectedSat.lng.toFixed(4)}°</span>
+              <span style={{ opacity: 0.4 }}>Latitude</span><span>{selectedSat.lat.toFixed(4)}°</span>
+              <span style={{ opacity: 0.4 }}>Longitude</span><span>{selectedSat.lng.toFixed(4)}°</span>
             </div>
           </div>
         );
@@ -326,7 +326,7 @@ export default function App() {
           }}>
             <div style={{ width: 12, height: 12, borderRadius: "50%", background: "#4fc3f7", animation: "pulse 1s ease-in-out infinite" }} />
             <span style={{ fontSize: 14, fontFamily: "monospace", color: "rgba(255,255,255,0.8)" }}>
-              重新篩選計算中...
+              Recalculating...
             </span>
           </div>
         </div>
