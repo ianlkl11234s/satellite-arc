@@ -2,25 +2,17 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { GlobeView, type CameraInfo } from "./globe/GlobeView";
 import type { SatellitePosition } from "./globe/GlobeScene";
 import type { SatelliteTLE } from "./data/satelliteLoader";
-import { loadSatelliteTLEs, convertSatellitesToFlights, loadSatelliteCatalog, type SatelliteCatalog } from "./data/satelliteLoader";
+import { loadSatelliteTLEs, convertSatellitesToFlights, loadSatelliteCatalog, type SatelliteCatalog, CATEGORIES } from "./data/satelliteLoader";
 import { getSatelliteInfo, ORBIT_TYPE_LABELS } from "./data/satelliteInfo";
 import { Sidebar } from "./components/Sidebar";
 
 const SPEED_OPTIONS = [1, 10, 30, 60, 120, 300, 600];
-const ALL_FILTER_TYPES = ["Starlink", "LEO", "MEO", "GEO", "HEO"];
+const ALL_CATEGORIES = Object.keys(CATEGORIES);
 
-const DEFAULT_COLORS: Record<string, string> = {
-  Starlink: "#81d4fa",
-  LEO: "#4fc3f7",
-  MEO: "#ce93d8",
-  GEO: "#ffb74d",
-  HEO: "#ef5350",
-};
-
-function getFilterType(tle: SatelliteTLE): string {
-  if (tle.constellation === "Starlink") return "Starlink";
-  return tle.orbit_type;
-}
+// 從 CATEGORIES 建立初始色碼表
+const DEFAULT_COLORS: Record<string, string> = Object.fromEntries(
+  Object.entries(CATEGORIES).map(([k, v]) => [k, v.color]),
+);
 
 export default function App() {
   const [tles, setTles] = useState<SatelliteTLE[]>([]);
@@ -38,7 +30,7 @@ export default function App() {
   const [orbScale, setOrbScale] = useState(1.0);
   const [orbOpacity, setOrbOpacity] = useState(0.9);
   const [trailLength, setTrailLength] = useState(8);
-  const [visibleTypes, setVisibleTypes] = useState<Set<string>>(new Set(ALL_FILTER_TYPES));
+  const [visibleCategories, setVisibleCategories] = useState<Set<string>>(new Set(ALL_CATEGORIES));
   const [colors, setColors] = useState<Record<string, string>>(DEFAULT_COLORS);
 
   // 進階篩選
@@ -48,13 +40,8 @@ export default function App() {
     return s;
   }, [tles]);
   const allCountries = useMemo(() => {
-    const CONSTELLATION_COUNTRY: Record<string, string> = {
-      Starlink: "美國", OneWeb: "英國", GPS: "美國", Galileo: "歐盟",
-      BeiDou: "中國", GLONASS: "俄羅斯", Iridium: "美國", Globalstar: "美國",
-      Orbcomm: "美國", Planet: "美國", Spire: "美國", COSMOS: "俄羅斯", Qianfan: "中國",
-    };
     const s = new Set<string>();
-    for (const t of tles) s.add(CONSTELLATION_COUNTRY[t.constellation] ?? "其他");
+    for (const t of tles) s.add(t.country_operator ?? "Unknown");
     return s;
   }, [tles]);
   const [visibleConstellations, setVisibleConstellations] = useState<Set<string>>(new Set<string>());
@@ -90,23 +77,14 @@ export default function App() {
       .catch((err) => { setError(String(err)); setLoading(false); });
   }, []);
 
-  // 篩選後的 TLE（所有篩選條件的交集）
-  const CONSTELLATION_COUNTRY: Record<string, string> = {
-    Starlink: "美國", OneWeb: "英國", GPS: "美國", Galileo: "歐盟",
-    BeiDou: "中國", GLONASS: "俄羅斯", Iridium: "美國", Globalstar: "美國",
-    Orbcomm: "美國", Planet: "美國", Spire: "美國", COSMOS: "俄羅斯", Qianfan: "中國",
-  };
-
   const filteredTles = useMemo(() => {
     return tles.filter((tle) => {
-      const ft = getFilterType(tle);
-      if (!visibleTypes.has(ft)) return false;
+      if (!visibleCategories.has(tle.category)) return false;
       if (visibleConstellations.size > 0 && !visibleConstellations.has(tle.constellation || "Other")) return false;
-      const country = CONSTELLATION_COUNTRY[tle.constellation] ?? "其他";
-      if (visibleCountries.size > 0 && !visibleCountries.has(country)) return false;
+      if (visibleCountries.size > 0 && !visibleCountries.has(tle.country_operator ?? "Unknown")) return false;
       return true;
     });
-  }, [tles, visibleTypes, visibleConstellations, visibleCountries]);
+  }, [tles, visibleCategories, visibleConstellations, visibleCountries]);
 
   // 軌道弧線（非同步計算，避免凍結 UI）
   const [orbits, setOrbits] = useState<Array<{ path: [number, number, number, number][]; orbitType: string }>>([]);
@@ -124,10 +102,10 @@ export default function App() {
     const timer = setTimeout(() => {
       const flights = convertSatellitesToFlights(filteredTles, new Date(), 60, 20);
       const tleMap = new Map<string, string>();
-      for (const tle of filteredTles) tleMap.set(`sat_${tle.norad_id}`, getFilterType(tle));
+      for (const tle of filteredTles) tleMap.set(`sat_${tle.norad_id}`, tle.category);
       const result = flights.map((f) => ({
         path: f.path,
-        orbitType: tleMap.get(f.fr24_id.replace(/_\d+$/, "")) ?? f.aircraft_type,
+        orbitType: tleMap.get(f.fr24_id.replace(/_\d+$/, "")) ?? "other",
       }));
       setOrbits(result);
       setRecalculating(false);
@@ -162,8 +140,8 @@ export default function App() {
     return () => { running = false; clearInterval(interval); };
   }, []);
 
-  const toggleOrbitType = useCallback((type: string) => {
-    setVisibleTypes((prev) => { const n = new Set(prev); if (n.has(type)) n.delete(type); else n.add(type); return n; });
+  const toggleCategory = useCallback((cat: string) => {
+    setVisibleCategories((prev) => { const n = new Set(prev); if (n.has(cat)) n.delete(cat); else n.add(cat); return n; });
   }, []);
 
   const toggleConstellation = useCallback((name: string) => {
@@ -218,7 +196,7 @@ export default function App() {
         tles={tles}
         orbits={orbits}
         getCurrentTime={getCurrentTime}
-        visibleOrbitTypes={visibleTypes}
+        visibleOrbitTypes={visibleCategories}
         showTrails={showTrails}
         showOrbits={showOrbits}
         orbitOpacity={orbitOpacity}
@@ -236,8 +214,8 @@ export default function App() {
       {/* Icon Rail Sidebar */}
       <Sidebar
         tles={tles}
-        visibleTypes={visibleTypes}
-        onToggleType={toggleOrbitType}
+        visibleCategories={visibleCategories}
+        onToggleCategory={toggleCategory}
         showTrails={showTrails}
         onShowTrailsChange={setShowTrails}
         showOrbits={showOrbits}
@@ -273,7 +251,8 @@ export default function App() {
       {selectedSat && (() => {
         const info = getSatelliteInfo(selectedSat.name);
         const orbitLabel = ORBIT_TYPE_LABELS[selectedSat.orbitType];
-        const satColor = colors[selectedSat.orbitType] ?? DEFAULT_COLORS[selectedSat.orbitType] ?? "#4fc3f7";
+        const catInfo = CATEGORIES[selectedSat.orbitType];
+        const satColor = colors[selectedSat.orbitType] ?? catInfo?.color ?? "#4fc3f7";
         return (
           <div style={{
             position: "absolute", top: 64, right: 12, width: 290, maxHeight: "calc(100vh - 140px)", zIndex: 10,
@@ -300,7 +279,7 @@ export default function App() {
               <span style={{ opacity: 0.4 }}>NORAD ID</span>
               <span>{selectedSat.id.replace("sat_", "")}</span>
               <span style={{ opacity: 0.4 }}>軌道類型</span>
-              <span><span style={{ color: satColor }}>{selectedSat.orbitType}</span>{orbitLabel && <span style={{ opacity: 0.5 }}> {orbitLabel.zh}</span>}</span>
+              <span><span style={{ color: satColor }}>{catInfo?.icon} {catInfo?.zh ?? selectedSat.orbitType}</span>{orbitLabel && <span style={{ opacity: 0.4 }}> ({orbitLabel.zh})</span>}</span>
               {orbitLabel && <><span style={{ opacity: 0.4 }}></span><span style={{ opacity: 0.35, fontSize: 10 }}>{orbitLabel.desc}</span></>}
               <span style={{ opacity: 0.4 }}>星座/系統</span>
               <span>{selectedSat.constellation || (info?.zhName ?? "—")}</span>

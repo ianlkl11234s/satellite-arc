@@ -271,8 +271,8 @@ export class GlobeScene {
 
       for (let i = batchStart; i < batchEnd; i++) {
         const tle = this.tles[i]!;
-        const filterType = tle.constellation === "Starlink" ? "Starlink" : tle.orbit_type;
-        if (!this.visibleOrbitTypes.has(filterType)) {
+        const cat = (tle as unknown as Record<string, string>).category ?? "other";
+        if (!this.visibleOrbitTypes.has(cat)) {
           this.positionCache.delete(i);
           continue;
         }
@@ -280,7 +280,7 @@ export class GlobeScene {
           this.positionCache.delete(i);
           continue;
         }
-        const country = this.countryMap[tle.constellation] ?? "其他";
+        const country = (tle as unknown as Record<string, string | null>).country_operator ?? "Unknown";
         if (this.countryFilter && !this.countryFilter.has(country)) {
           this.positionCache.delete(i);
           continue;
@@ -304,7 +304,7 @@ export class GlobeScene {
             index: i,
             x, y, z,
             lat, lng, altKm,
-            orbitType: filterType,
+            orbitType: cat,
             name: tle.name,
             constellation: tle.constellation,
           });

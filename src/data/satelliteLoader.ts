@@ -18,7 +18,7 @@ const SUPABASE_URL = "https://utcmcikhvxnohbxchbrs.supabase.co";
 const SUPABASE_ANON_KEY =
   "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InV0Y21jaWtodnhub2hieGNoYnJzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQ1NjgyMDMsImV4cCI6MjA5MDE0NDIwM30.rQSjJ6WD53p9tRZ6M7xleDelktVHfKeZFGPC2ItULVQ";
 
-/** Supabase 回傳的 TLE 資料 */
+/** Supabase 回傳的 TLE 資料（含分類） */
 export interface SatelliteTLE {
   norad_id: number;
   name: string;
@@ -28,7 +28,24 @@ export interface SatelliteTLE {
   tle_line2: string;
   inclination: number;
   period_min: number;
+  /** 用途分類 */
+  category: string;
+  /** UCS 營運國家 */
+  country_operator: string | null;
 }
+
+/** 用途分類定義 */
+export const CATEGORIES: Record<string, { zh: string; color: string; icon: string }> = {
+  broadband:  { zh: "寬頻通訊", color: "#81d4fa", icon: "📡" },
+  phone:      { zh: "衛星電話/IoT", color: "#4fc3f7", icon: "📞" },
+  geo_comms:  { zh: "同步軌道通訊", color: "#ffb74d", icon: "📺" },
+  navigation: { zh: "導航定位", color: "#ce93d8", icon: "🧭" },
+  earth_obs:  { zh: "地球觀測", color: "#81c784", icon: "🌍" },
+  science:    { zh: "科學/太空站", color: "#fff176", icon: "🔬" },
+  military:   { zh: "軍事/情報", color: "#ef5350", icon: "🎖" },
+  tech_demo:  { zh: "技術展示", color: "#b0bec5", icon: "🧪" },
+  other:      { zh: "其他", color: "#78909c", icon: "🛰" },
+};
 
 /** 軌道類型 → 顏色對應（用於前端分色） */
 export const ORBIT_COLORS: Record<string, string> = {
@@ -62,9 +79,9 @@ function scaleAltitude(altMeters: number): number {
  * 從 Supabase 載入衛星 TLE 資料
  */
 export async function loadSatelliteTLEs(): Promise<SatelliteTLE[]> {
-  // Supabase 專案層級限制每次最多 5,000 筆，需要分頁拉取
+  // 使用 satellite_classified view（含 category + country）
   const PAGE_SIZE = 5000;
-  const baseUrl = `${SUPABASE_URL}/rest/v1/satellite_tle?select=norad_id,name,constellation,orbit_type,tle_line1,tle_line2,inclination,period_min&order=norad_id`;
+  const baseUrl = `${SUPABASE_URL}/rest/v1/satellite_classified?select=norad_id,name,constellation,orbit_type,tle_line1,tle_line2,inclination,period_min,category,country_operator&order=norad_id`;
   const headers = {
     apikey: SUPABASE_ANON_KEY,
     Authorization: `Bearer ${SUPABASE_ANON_KEY}`,
