@@ -129,7 +129,7 @@ function SettingsPanel(props: SidebarProps) {
             <label key={cat} style={{ display: "flex", alignItems: "center", gap: 8, cursor: "pointer", fontSize: 12 }}>
               <input type="checkbox" checked={active} onChange={() => props.onToggleCategory(cat)}
                 style={{ accentColor: props.colors[cat] ?? info.color, width: 14, height: 14 }} />
-              <span style={{ fontSize: 14 }}>{info.icon}</span>
+              <div style={{ width: 8, height: 8, borderRadius: "50%", background: props.colors[cat] ?? info.color, opacity: active ? 1 : 0.3 }} />
               <span style={{ opacity: active ? 1 : 0.4, flex: 1 }}>{info.zh}</span>
               <span style={{ opacity: 0.3, fontSize: 10 }}>{count.toLocaleString()}</span>
             </label>
@@ -252,7 +252,7 @@ function FiltersPanel(props: SidebarProps) {
                   background: isExpanded ? "rgba(255,255,255,0.04)" : "transparent",
                   border: "none", borderRadius: 4, cursor: "pointer", color: T.TEXT, fontSize: 12, fontFamily: "monospace", textAlign: "left",
                 }}>
-                  <span style={{ fontSize: 13 }}>{info.icon}</span>
+                  <div style={{ width: 6, height: 6, borderRadius: "50%", background: props.colors[cat] ?? info.color, flexShrink: 0 }} />
                   <span style={{ flex: 1, fontWeight: isExpanded ? 600 : 400 }}>{info.zh}</span>
                   <span style={{ opacity: 0.3, fontSize: 10 }}>{totalCount.toLocaleString()}</span>
                   <span style={{ opacity: 0.4, fontSize: 10 }}>{isExpanded ? "▼" : "▶"}</span>
@@ -362,7 +362,6 @@ function ColorsPanel(props: SidebarProps) {
           <div key={cat} style={{ display: "flex", alignItems: "center", gap: 10, fontSize: 12 }}>
             <input type="color" value={props.colors[cat] ?? info.color} onChange={(e) => props.onColorChange(cat, e.target.value)}
               style={{ width: 24, height: 24, border: "none", borderRadius: 4, cursor: "pointer", background: "none", padding: 0 }} />
-            <span style={{ fontSize: 13 }}>{info.icon}</span>
             <span style={{ flex: 1, opacity: 0.85 }}>{info.zh}</span>
           </div>
         ))}

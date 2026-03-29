@@ -276,7 +276,7 @@ export default function App() {
               <span style={{ opacity: 0.4 }}>NORAD ID</span>
               <span>{selectedSat.id.replace("sat_", "")}</span>
               <span style={{ opacity: 0.4 }}>軌道類型</span>
-              <span><span style={{ color: satColor }}>{catInfo?.icon} {catInfo?.zh ?? selectedSat.orbitType}</span>{orbitLabel && <span style={{ opacity: 0.4 }}> ({orbitLabel.zh})</span>}</span>
+              <span><span style={{ color: satColor }}>{catInfo?.zh ?? selectedSat.orbitType}</span>{orbitLabel && <span style={{ opacity: 0.4 }}> ({orbitLabel.zh})</span>}</span>
               {orbitLabel && <><span style={{ opacity: 0.4 }}></span><span style={{ opacity: 0.35, fontSize: 10 }}>{orbitLabel.desc}</span></>}
               <span style={{ opacity: 0.4 }}>星座/系統</span>
               <span>{selectedSat.constellation || (info?.zhName ?? "—")}</span>
