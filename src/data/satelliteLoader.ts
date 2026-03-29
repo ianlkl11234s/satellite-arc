@@ -13,10 +13,9 @@
 import * as satellite from "satellite.js";
 import type { Flight, TrailPoint } from "../types";
 
-// Supabase PostgREST 設定
-const SUPABASE_URL = "https://utcmcikhvxnohbxchbrs.supabase.co";
-const SUPABASE_ANON_KEY =
-  "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InV0Y21jaWtodnhub2hieGNoYnJzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQ1NjgyMDMsImV4cCI6MjA5MDE0NDIwM30.rQSjJ6WD53p9tRZ6M7xleDelktVHfKeZFGPC2ItULVQ";
+// Supabase PostgREST 設定（從環境變數讀取）
+const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL as string;
+const SUPABASE_ANON_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY as string;
 
 /** Supabase 回傳的 TLE 資料（含分類） */
 export interface SatelliteTLE {
