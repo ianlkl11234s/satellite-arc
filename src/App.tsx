@@ -108,25 +108,35 @@ export default function App() {
     });
   }, [tles, visibleTypes, visibleConstellations, visibleCountries]);
 
-  // 軌道弧線（從篩選後的 TLE 建構）
-  const orbits = useMemo(() => {
-    if (filteredTles.length === 0) return [];
-    const flights = convertSatellitesToFlights(filteredTles, new Date(), 60, 20);
-    const tleMap = new Map<string, string>();
-    for (const tle of filteredTles) tleMap.set(`sat_${tle.norad_id}`, getFilterType(tle));
-    return flights.map((f) => ({
-      path: f.path,
-      orbitType: tleMap.get(f.fr24_id.replace(/_\d+$/, "")) ?? f.aircraft_type,
-    }));
-  }, [filteredTles]);
+  // 軌道弧線（非同步計算，避免凍結 UI）
+  const [orbits, setOrbits] = useState<Array<{ path: [number, number, number, number][]; orbitType: string }>>([]);
+  const [recalculating, setRecalculating] = useState(false);
 
-  // TLE 載入 + orbits 計算完成後才顯示
   useEffect(() => {
-    if (!loading && tles.length > 0 && !ready) {
-      // 延遲一幀讓 orbits memo 完成
-      requestAnimationFrame(() => setReady(true));
+    if (filteredTles.length === 0) {
+      setOrbits([]);
+      return;
     }
-  }, [loading, tles.length, ready]);
+
+    setRecalculating(true);
+
+    // 用 setTimeout 讓 UI 先渲染「重新計算中」overlay
+    const timer = setTimeout(() => {
+      const flights = convertSatellitesToFlights(filteredTles, new Date(), 60, 20);
+      const tleMap = new Map<string, string>();
+      for (const tle of filteredTles) tleMap.set(`sat_${tle.norad_id}`, getFilterType(tle));
+      const result = flights.map((f) => ({
+        path: f.path,
+        orbitType: tleMap.get(f.fr24_id.replace(/_\d+$/, "")) ?? f.aircraft_type,
+      }));
+      setOrbits(result);
+      setRecalculating(false);
+      if (!ready) setReady(true);
+    }, 50);
+
+    return () => clearTimeout(timer);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [filteredTles]);
 
   const getCurrentTime = useCallback(() => simTimeRef.current, []);
 
@@ -323,6 +333,28 @@ export default function App() {
           </div>
         );
       })()}
+
+      {/* 重新計算 overlay */}
+      {recalculating && (
+        <div style={{
+          position: "absolute", inset: 0, zIndex: 30,
+          display: "flex", alignItems: "center", justifyContent: "center",
+          background: "rgba(2,2,8,0.5)", backdropFilter: "blur(4px)",
+          pointerEvents: "none",
+        }}>
+          <div style={{
+            display: "flex", alignItems: "center", gap: 14,
+            padding: "16px 28px",
+            background: "rgba(8,8,20,0.85)", backdropFilter: "blur(12px)",
+            borderRadius: 10, border: "1px solid rgba(79,195,247,0.3)",
+          }}>
+            <div style={{ width: 12, height: 12, borderRadius: "50%", background: "#4fc3f7", animation: "pulse 1s ease-in-out infinite" }} />
+            <span style={{ fontSize: 14, fontFamily: "monospace", color: "rgba(255,255,255,0.8)" }}>
+              重新篩選計算中...
+            </span>
+          </div>
+        </div>
+      )}
 
       {/* 時間控制列 */}
       <div style={{
