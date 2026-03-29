@@ -5,6 +5,7 @@ import type { SatelliteTLE } from "./data/satelliteLoader";
 import { loadSatelliteTLEs, convertSatellitesToFlights, loadSatelliteCatalog, type SatelliteCatalog, CATEGORIES } from "./data/satelliteLoader";
 import { getSatelliteInfo, ORBIT_TYPE_LABELS } from "./data/satelliteInfo";
 import { Sidebar } from "./components/Sidebar";
+import { LoadingScreen } from "./components/LoadingScreen";
 
 const SPEED_OPTIONS = [1, 10, 30, 60, 120, 300, 600];
 const ALL_CATEGORIES = Object.keys(CATEGORIES);
@@ -171,15 +172,7 @@ export default function App() {
   const visibleCount = filteredTles.length;
 
   if (!ready && !error) {
-    return (
-      <div style={{ width: "100vw", height: "100vh", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", background: "#020208", color: "#fff", fontFamily: "monospace" }}>
-        <div style={{ width: 16, height: 16, borderRadius: "50%", background: "#4fc3f7", animation: "pulse 1s ease-in-out infinite", marginBottom: 20 }} />
-        <div style={{ fontSize: 16, opacity: 0.7 }}>
-          {loading ? "Loading satellite data..." : `Preparing ${tles.length.toLocaleString()} satellites...`}
-        </div>
-        <style>{`@keyframes pulse { 0%,100% { opacity:0.3; transform:scale(0.8) } 50% { opacity:1; transform:scale(1.2) } }`}</style>
-      </div>
-    );
+    return <LoadingScreen loading={loading} tleCount={tles.length} preparing={!loading && tles.length > 0} />;
   }
 
   if (error) {
@@ -234,6 +227,10 @@ export default function App() {
         onToggleConstellation={toggleConstellation}
         visibleCountries={visibleCountries}
         onToggleCountry={toggleCountry}
+        onSelectAllConstellations={() => setVisibleConstellations(new Set(allConstellations))}
+        onClearConstellations={() => setVisibleConstellations(new Set())}
+        onSelectAllCountries={() => setVisibleCountries(new Set(allCountries))}
+        onClearCountries={() => setVisibleCountries(new Set())}
       />
 
       {/* Header（右移避開 sidebar） */}

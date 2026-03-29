@@ -35,6 +35,11 @@ export interface SidebarProps {
   onToggleConstellation: (name: string) => void;
   visibleCountries: Set<string>;
   onToggleCountry: (country: string) => void;
+  // 全選/清除
+  onSelectAllConstellations?: () => void;
+  onClearConstellations?: () => void;
+  onSelectAllCountries?: () => void;
+  onClearCountries?: () => void;
 }
 
 const T = {
@@ -154,8 +159,11 @@ function SettingsPanel(props: SidebarProps) {
 /* ── Panel: Filters（兩層：Category → Constellation / Country） ── */
 
 function FiltersPanel(props: SidebarProps) {
-  const [tab, setTab] = useState<"constellation" | "country">("constellation");
+  const [tab, setTab] = useState<"system" | "country" | "purpose">("system");
   const [expandedCat, setExpandedCat] = useState<string | null>(null);
+  const [search, setSearch] = useState("");
+
+  const searchLower = search.toLowerCase();
 
   // 按 category 分組的 constellation
   const catGroups = useMemo(() => {
@@ -178,35 +186,68 @@ function FiltersPanel(props: SidebarProps) {
     return [...map.entries()].sort((a, b) => b[1] - a[1]);
   }, [props.tles]);
 
+  // UCS purpose 統計
+  const purposes = useMemo(() => {
+    const map = new Map<string, number>();
+    for (const t of props.tles) {
+      const cat = CATEGORIES[t.category];
+      map.set(cat?.zh ?? t.category, (map.get(cat?.zh ?? t.category) ?? 0) + 1);
+    }
+    return [...map.entries()].sort((a, b) => b[1] - a[1]);
+  }, [props.tles]);
+
   const catOrder = Object.keys(CATEGORIES);
+  const tabs = [
+    { key: "system" as const, label: "衛星系統" },
+    { key: "country" as const, label: "國家" },
+    { key: "purpose" as const, label: "用途" },
+  ];
 
   return (
     <>
-      <div style={{ display: "flex", gap: 4, marginBottom: 10 }}>
-        {(["constellation", "country"] as const).map((t) => (
-          <button key={t} onClick={() => setTab(t)} style={{
+      {/* 搜尋框 */}
+      <input
+        type="text" placeholder="搜尋衛星、星座、國家..."
+        value={search} onChange={(e) => setSearch(e.target.value)}
+        style={{
+          width: "100%", padding: "7px 10px", marginBottom: 10,
+          background: "rgba(255,255,255,0.05)", border: `1px solid ${T.BORDER}`,
+          borderRadius: 6, color: T.TEXT, fontFamily: "monospace", fontSize: 11,
+          outline: "none",
+        }}
+      />
+
+      {/* 三個 Tab */}
+      <div style={{ display: "flex", gap: 3, marginBottom: 10 }}>
+        {tabs.map((t) => (
+          <button key={t.key} onClick={() => setTab(t.key)} style={{
             flex: 1, padding: "5px 0", fontSize: 11, fontFamily: "monospace",
-            border: `1px solid ${tab === t ? T.ACTIVE_BORDER : T.BORDER}`, borderRadius: 4,
-            background: tab === t ? T.ACTIVE_BG : "transparent", color: tab === t ? "#fff" : T.DIM, cursor: "pointer",
+            border: `1px solid ${tab === t.key ? T.ACTIVE_BORDER : T.BORDER}`, borderRadius: 4,
+            background: tab === t.key ? T.ACTIVE_BG : "transparent", color: tab === t.key ? "#fff" : T.DIM, cursor: "pointer",
           }}>
-            {t === "constellation" ? "用途/星座" : "國家"}
+            {t.label}
           </button>
         ))}
       </div>
 
-      {tab === "constellation" && (
-        <div style={{ display: "flex", flexDirection: "column", gap: 2, maxHeight: 500, overflowY: "auto" }}>
+      {/* 衛星系統 tab */}
+      {tab === "system" && (
+        <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
           {catOrder.map((cat) => {
             const info = CATEGORIES[cat]!;
             const constellations = catGroups[cat];
             if (!constellations || constellations.size === 0) return null;
+            // 搜尋過濾
+            const filteredEntries = [...constellations.entries()].filter(([name]) =>
+              !searchLower || name.toLowerCase().includes(searchLower) || info.zh.includes(search)
+            );
+            if (searchLower && filteredEntries.length === 0) return null;
             const totalCount = [...constellations.values()].reduce((a, b) => a + b, 0);
-            const isExpanded = expandedCat === cat;
+            const isExpanded = expandedCat === cat || !!searchLower;
 
             return (
               <div key={cat}>
-                {/* Category header（可展開） */}
-                <button onClick={() => setExpandedCat(isExpanded ? null : cat)} style={{
+                <button onClick={() => setExpandedCat(isExpanded && !searchLower ? null : cat)} style={{
                   width: "100%", display: "flex", alignItems: "center", gap: 8, padding: "6px 4px",
                   background: isExpanded ? "rgba(255,255,255,0.04)" : "transparent",
                   border: "none", borderRadius: 4, cursor: "pointer", color: T.TEXT, fontSize: 12, fontFamily: "monospace", textAlign: "left",
@@ -216,11 +257,9 @@ function FiltersPanel(props: SidebarProps) {
                   <span style={{ opacity: 0.3, fontSize: 10 }}>{totalCount.toLocaleString()}</span>
                   <span style={{ opacity: 0.4, fontSize: 10 }}>{isExpanded ? "▼" : "▶"}</span>
                 </button>
-
-                {/* 展開後的 constellation 列表 */}
                 {isExpanded && (
                   <div style={{ paddingLeft: 16, display: "flex", flexDirection: "column", gap: 2, marginBottom: 4 }}>
-                    {[...constellations.entries()].sort((a, b) => b[1] - a[1]).map(([name, count]) => {
+                    {filteredEntries.sort((a, b) => b[1] - a[1]).map(([name, count]) => {
                       const active = props.visibleConstellations.has(name);
                       return (
                         <label key={name} style={{ display: "flex", alignItems: "center", gap: 8, cursor: "pointer", fontSize: 11 }}>
@@ -239,9 +278,10 @@ function FiltersPanel(props: SidebarProps) {
         </div>
       )}
 
+      {/* 國家 tab */}
       {tab === "country" && (
-        <div style={{ display: "flex", flexDirection: "column", gap: 3, maxHeight: 500, overflowY: "auto" }}>
-          {countries.map(([country, count]) => {
+        <div style={{ display: "flex", flexDirection: "column", gap: 3 }}>
+          {countries.filter(([c]) => !searchLower || c.toLowerCase().includes(searchLower)).map(([country, count]) => {
             const active = props.visibleCountries.has(country);
             return (
               <label key={country} style={{ display: "flex", alignItems: "center", gap: 8, cursor: "pointer", fontSize: 11 }}>
@@ -254,28 +294,78 @@ function FiltersPanel(props: SidebarProps) {
           })}
         </div>
       )}
+
+      {/* 用途 tab */}
+      {tab === "purpose" && (
+        <div style={{ display: "flex", flexDirection: "column", gap: 3 }}>
+          {purposes.filter(([p]) => !searchLower || p.toLowerCase().includes(searchLower)).map(([purpose, count]) => (
+            <div key={purpose} style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 11 }}>
+              <span style={{ flex: 1, opacity: 0.85 }}>{purpose}</span>
+              <span style={{ opacity: 0.3, fontSize: 10 }}>{count.toLocaleString()}</span>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* 全選/清除 */}
+      <div style={{ display: "flex", gap: 6, marginTop: 10, paddingTop: 8, borderTop: `1px solid ${T.BORDER}` }}>
+        <button onClick={() => { props.onSelectAllConstellations?.(); props.onSelectAllCountries?.(); }} style={{
+          flex: 1, padding: "5px 0", fontSize: 10, fontFamily: "monospace",
+          border: `1px solid ${T.BORDER}`, borderRadius: 4, background: "transparent", color: T.DIM, cursor: "pointer",
+        }}>全選</button>
+        <button onClick={() => { props.onClearConstellations?.(); props.onClearCountries?.(); }} style={{
+          flex: 1, padding: "5px 0", fontSize: 10, fontFamily: "monospace",
+          border: `1px solid ${T.BORDER}`, borderRadius: 4, background: "transparent", color: T.DIM, cursor: "pointer",
+        }}>清除</button>
+      </div>
     </>
   );
 }
 
 /* ── Panel: Colors ─────────────────────────────────────── */
 
+const COLOR_PRESETS: Record<string, { name: string; colors: Record<string, string> }> = {
+  default: { name: "預設", colors: Object.fromEntries(Object.entries(CATEGORIES).map(([k, v]) => [k, v.color])) },
+  warm: { name: "暖色", colors: { broadband: "#ff8a65", phone: "#ffab40", geo_comms: "#ffd54f", navigation: "#fff176", earth_obs: "#aed581", science: "#e6ee9c", military: "#ef9a9a", tech_demo: "#bcaaa4", other: "#a1887f" } },
+  cool: { name: "冷色", colors: { broadband: "#4dd0e1", phone: "#4fc3f7", geo_comms: "#64b5f6", navigation: "#7986cb", earth_obs: "#9fa8da", science: "#b39ddb", military: "#ce93d8", tech_demo: "#90a4ae", other: "#78909c" } },
+  mono: { name: "單色", colors: { broadband: "#e0e0e0", phone: "#bdbdbd", geo_comms: "#9e9e9e", navigation: "#eeeeee", earth_obs: "#b0bec5", science: "#cfd8dc", military: "#757575", tech_demo: "#616161", other: "#424242" } },
+};
+
 function ColorsPanel(props: SidebarProps) {
   return (
     <>
-      <SectionHeader>用途分類配色</SectionHeader>
+      <SectionHeader>配色主題</SectionHeader>
+      <div style={{ display: "flex", gap: 8, marginBottom: 14 }}>
+        {Object.entries(COLOR_PRESETS).map(([key, preset]) => (
+          <button key={key} onClick={() => {
+            for (const [cat, color] of Object.entries(preset.colors)) {
+              props.onColorChange(cat, color);
+            }
+          }} style={{
+            flex: 1, padding: "8px 4px", borderRadius: 6, cursor: "pointer",
+            background: "rgba(255,255,255,0.04)", border: `1px solid ${T.BORDER}`,
+            display: "flex", flexDirection: "column", alignItems: "center", gap: 4,
+          }}>
+            <div style={{ display: "flex", gap: 2 }}>
+              {Object.values(preset.colors).slice(0, 4).map((c, i) => (
+                <div key={i} style={{ width: 10, height: 10, borderRadius: 2, background: c }} />
+              ))}
+            </div>
+            <span style={{ fontSize: 9, color: T.DIM, fontFamily: "monospace" }}>{preset.name}</span>
+          </button>
+        ))}
+      </div>
+
+      <SectionHeader>自訂配色</SectionHeader>
       <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
         {Object.entries(CATEGORIES).map(([cat, info]) => (
           <div key={cat} style={{ display: "flex", alignItems: "center", gap: 10, fontSize: 12 }}>
             <input type="color" value={props.colors[cat] ?? info.color} onChange={(e) => props.onColorChange(cat, e.target.value)}
-              style={{ width: 28, height: 28, border: "none", borderRadius: 4, cursor: "pointer", background: "none", padding: 0 }} />
-            <span style={{ fontSize: 14 }}>{info.icon}</span>
+              style={{ width: 24, height: 24, border: "none", borderRadius: 4, cursor: "pointer", background: "none", padding: 0 }} />
+            <span style={{ fontSize: 13 }}>{info.icon}</span>
             <span style={{ flex: 1, opacity: 0.85 }}>{info.zh}</span>
           </div>
         ))}
-      </div>
-      <div style={{ marginTop: 12, fontSize: 10, color: T.DIM, lineHeight: 1.5 }}>
-        點選色塊自訂各用途分類的顯示顏色。
       </div>
     </>
   );
@@ -283,70 +373,130 @@ function ColorsPanel(props: SidebarProps) {
 
 /* ── Panel: Stats ──────────────────────────────────────── */
 
+function DonutChart({ data, size = 100 }: { data: Array<{ label: string; value: number; color: string }>; size?: number }) {
+  const total = data.reduce((s, d) => s + d.value, 0);
+  if (total === 0) return null;
+  const r = size / 2;
+  const innerR = r * 0.6;
+  let cumAngle = -Math.PI / 2;
+
+  return (
+    <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`}>
+      {data.map((d, i) => {
+        const angle = (d.value / total) * Math.PI * 2;
+        const startAngle = cumAngle;
+        cumAngle += angle;
+        const endAngle = cumAngle;
+        const largeArc = angle > Math.PI ? 1 : 0;
+        const x1 = r + Math.cos(startAngle) * r;
+        const y1 = r + Math.sin(startAngle) * r;
+        const x2 = r + Math.cos(endAngle) * r;
+        const y2 = r + Math.sin(endAngle) * r;
+        const ix1 = r + Math.cos(endAngle) * innerR;
+        const iy1 = r + Math.sin(endAngle) * innerR;
+        const ix2 = r + Math.cos(startAngle) * innerR;
+        const iy2 = r + Math.sin(startAngle) * innerR;
+        return (
+          <path key={i} fill={d.color} opacity={0.85}
+            d={`M ${x1} ${y1} A ${r} ${r} 0 ${largeArc} 1 ${x2} ${y2} L ${ix1} ${iy1} A ${innerR} ${innerR} 0 ${largeArc} 0 ${ix2} ${iy2} Z`} />
+        );
+      })}
+    </svg>
+  );
+}
+
 function StatsPanel(props: SidebarProps) {
   const total = props.tles.length;
+
   const byCat = useMemo(() => {
     const m: Record<string, number> = {};
     for (const t of props.tles) m[t.category] = (m[t.category] ?? 0) + 1;
-    return m;
+    return Object.entries(m).sort((a, b) => b[1] - a[1]);
   }, [props.tles]);
 
   const byOrbit = useMemo(() => {
     const m: Record<string, number> = {};
     for (const t of props.tles) m[t.orbit_type] = (m[t.orbit_type] ?? 0) + 1;
-    return m;
+    return Object.entries(m).sort((a, b) => b[1] - a[1]);
   }, [props.tles]);
+
+  const topOperators = useMemo(() => {
+    const m = new Map<string, number>();
+    for (const t of props.tles) {
+      const op = t.constellation || "Other";
+      m.set(op, (m.get(op) ?? 0) + 1);
+    }
+    return [...m.entries()].sort((a, b) => b[1] - a[1]).slice(0, 8);
+  }, [props.tles]);
+
+  const visible = props.tles.filter((t) => props.visibleCategories.has(t.category)).length;
+
+  const donutData = byCat.map(([cat, count]) => ({
+    label: CATEGORIES[cat]?.zh ?? cat,
+    value: count,
+    color: props.colors[cat] ?? CATEGORIES[cat]?.color ?? T.ACCENT,
+  }));
 
   return (
     <>
-      <SectionHeader>衛星統計</SectionHeader>
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8, marginBottom: 12 }}>
-        <div style={{ background: "rgba(255,255,255,0.04)", borderRadius: 8, padding: "10px 12px", textAlign: "center" }}>
-          <div style={{ fontSize: 20, fontWeight: 700 }}>{total.toLocaleString()}</div>
-          <div style={{ fontSize: 10, color: T.DIM, marginTop: 2 }}>追蹤中</div>
+      <SectionHeader>統計</SectionHeader>
+      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8, marginBottom: 14 }}>
+        <div style={{ background: "rgba(255,255,255,0.04)", borderRadius: 8, padding: "12px", textAlign: "center" }}>
+          <div style={{ fontSize: 22, fontWeight: 700, color: T.ACCENT }}>{total.toLocaleString()}</div>
+          <div style={{ fontSize: 10, color: T.DIM, marginTop: 2 }}>追蹤中衛星</div>
         </div>
-        <div style={{ background: "rgba(255,255,255,0.04)", borderRadius: 8, padding: "10px 12px", textAlign: "center" }}>
-          <div style={{ fontSize: 20, fontWeight: 700 }}>{Object.keys(byCat).length}</div>
-          <div style={{ fontSize: 10, color: T.DIM, marginTop: 2 }}>用途分類</div>
+        <div style={{ background: "rgba(255,255,255,0.04)", borderRadius: 8, padding: "12px", textAlign: "center" }}>
+          <div style={{ fontSize: 22, fontWeight: 700, color: "#81c784" }}>{visible.toLocaleString()}</div>
+          <div style={{ fontSize: 10, color: T.DIM, marginTop: 2 }}>目前顯示</div>
         </div>
       </div>
 
-      <SectionHeader>用途分佈</SectionHeader>
-      {Object.entries(byCat).sort((a, b) => b[1] - a[1]).map(([cat, count]) => {
-        const pct = total > 0 ? (count / total * 100) : 0;
-        const info = CATEGORIES[cat];
-        return (
-          <div key={cat} style={{ marginBottom: 6 }}>
-            <div style={{ display: "flex", justifyContent: "space-between", fontSize: 11, marginBottom: 2 }}>
-              <span>{info?.icon} {info?.zh ?? cat}</span>
-              <span style={{ color: T.DIM }}>{count.toLocaleString()} ({pct.toFixed(1)}%)</span>
-            </div>
-            <div style={{ height: 4, background: T.SLIDER_TRACK, borderRadius: 2, overflow: "hidden" }}>
-              <div style={{ height: "100%", width: `${pct}%`, background: info?.color ?? T.ACCENT, borderRadius: 2 }} />
-            </div>
-          </div>
-        );
-      })}
-
       <SectionHeader>軌道分佈</SectionHeader>
-      {Object.entries(byOrbit).sort((a, b) => b[1] - a[1]).map(([orbit, count]) => {
+      {byOrbit.map(([orbit, count]) => {
         const pct = total > 0 ? (count / total * 100) : 0;
         return (
           <div key={orbit} style={{ marginBottom: 6 }}>
             <div style={{ display: "flex", justifyContent: "space-between", fontSize: 11, marginBottom: 2 }}>
               <span>{orbit}</span>
-              <span style={{ color: T.DIM }}>{count.toLocaleString()} ({pct.toFixed(1)}%)</span>
+              <span style={{ color: T.DIM }}>{count.toLocaleString()}</span>
             </div>
             <div style={{ height: 4, background: T.SLIDER_TRACK, borderRadius: 2, overflow: "hidden" }}>
-              <div style={{ height: "100%", width: `${pct}%`, background: T.ACCENT, borderRadius: 2 }} />
+              <div style={{ height: "100%", width: `${Math.min(pct, 100)}%`, background: T.ACCENT, borderRadius: 2 }} />
             </div>
           </div>
         );
       })}
 
-      <div style={{ marginTop: 16, fontSize: 10, color: T.DIM, lineHeight: 1.5 }}>
-        資料來源：CelesTrak GP 3LE<br />
-        分類依據：UCS Satellite Database
+      <SectionHeader>用途分佈</SectionHeader>
+      <div style={{ display: "flex", gap: 12, alignItems: "center", marginBottom: 8 }}>
+        <DonutChart data={donutData} size={90} />
+        <div style={{ display: "flex", flexDirection: "column", gap: 3, fontSize: 10 }}>
+          {byCat.slice(0, 6).map(([cat, count]) => {
+            const info = CATEGORIES[cat];
+            const pct = total > 0 ? (count / total * 100).toFixed(1) : "0";
+            return (
+              <div key={cat} style={{ display: "flex", alignItems: "center", gap: 5 }}>
+                <div style={{ width: 6, height: 6, borderRadius: 1, background: props.colors[cat] ?? info?.color ?? T.ACCENT, flexShrink: 0 }} />
+                <span style={{ opacity: 0.7 }}>{info?.zh ?? cat}</span>
+                <span style={{ opacity: 0.35 }}>{pct}%</span>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+
+      <SectionHeader>主要營運商</SectionHeader>
+      <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+        {topOperators.map(([op, count]) => (
+          <div key={op} style={{ display: "flex", justifyContent: "space-between", fontSize: 11 }}>
+            <span style={{ opacity: 0.8 }}>{op}</span>
+            <span style={{ opacity: 0.3 }}>{count.toLocaleString()}</span>
+          </div>
+        ))}
+      </div>
+
+      <div style={{ marginTop: 14, fontSize: 9, color: T.DIM, lineHeight: 1.5 }}>
+        資料來源：CelesTrak GP 3LE · UCS Satellite Database
       </div>
     </>
   );
