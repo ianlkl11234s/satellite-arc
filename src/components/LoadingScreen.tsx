@@ -46,23 +46,14 @@ export function LoadingScreen({ loading, tleCount, preparing }: LoadingScreenPro
         }
       `}</style>
 
-      {/* Icon */}
+      {/* Pulsing dot */}
       <div style={{
-        width: 72, height: 72, borderRadius: 18,
-        background: "linear-gradient(135deg, rgba(79,195,247,0.25) 0%, rgba(79,195,247,0.08) 100%)",
-        border: "1px solid rgba(79,195,247,0.2)",
-        display: "flex", alignItems: "center", justifyContent: "center",
-        marginBottom: 24,
+        width: 14, height: 14, borderRadius: "50%",
+        background: "#4fc3f7",
+        boxShadow: "0 0 20px rgba(79,195,247,0.5), 0 0 40px rgba(79,195,247,0.2)",
+        marginBottom: 28,
         animation: "loadingPulse 2s ease-in-out infinite",
-      }}>
-        <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="#4fc3f7" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-          <circle cx="12" cy="12" r="10" opacity="0.3" />
-          <circle cx="12" cy="12" r="3" fill="#4fc3f7" opacity="0.8" />
-          <ellipse cx="12" cy="12" rx="10" ry="4" transform="rotate(-30 12 12)" opacity="0.5" />
-          <ellipse cx="12" cy="12" rx="10" ry="4" transform="rotate(30 12 12)" opacity="0.5" />
-          <ellipse cx="12" cy="12" rx="10" ry="4" opacity="0.5" />
-        </svg>
-      </div>
+      }} />
 
       {/* Title */}
       <h1 style={{
