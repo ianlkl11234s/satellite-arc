@@ -397,15 +397,21 @@ function FiltersPanel(props: SidebarProps) {
         </div>
       )}
 
-      {/* 全選/清除 */}
+      {/* 全選/清除 — 根據當前 tab 操作對應篩選器 */}
       <Divider />
       <div style={{ display: "flex", gap: 8 }}>
-        <button onClick={() => { props.onSelectAllConstellations?.(); props.onSelectAllCountries?.(); }} style={{
+        <button onClick={() => {
+          if (tab === "country") { props.onSelectAllCountries?.(); }
+          else { props.onSelectAllConstellations?.(); }
+        }} style={{
           flex: 1, padding: "6px 0", fontSize: 12, fontFamily: T.FONT, fontWeight: 500,
           border: `1px solid ${T.BORDER_SUBTLE}`, borderRadius: 6,
           background: "transparent", color: T.DIM, cursor: "pointer",
         }}>Select All</button>
-        <button onClick={() => { props.onClearConstellations?.(); props.onClearCountries?.(); }} style={{
+        <button onClick={() => {
+          if (tab === "country") { props.onClearCountries?.(); }
+          else { props.onClearConstellations?.(); }
+        }} style={{
           flex: 1, padding: "6px 0", fontSize: 12, fontFamily: T.FONT, fontWeight: 500,
           border: `1px solid ${T.BORDER_SUBTLE}`, borderRadius: 6,
           background: "transparent", color: T.DIM, cursor: "pointer",
