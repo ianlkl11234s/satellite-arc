@@ -5,6 +5,7 @@ import type { SatelliteTLE } from "./data/satelliteLoader";
 import { loadSatelliteTLEs, convertSatellitesToFlights, loadSatelliteCatalog, type SatelliteCatalog, CATEGORIES } from "./data/satelliteLoader";
 import { getSatelliteInfo, ORBIT_TYPE_LABELS } from "./data/satelliteInfo";
 import { Sidebar } from "./components/Sidebar";
+import { useIsMobile } from "./hooks/useIsMobile";
 import { LoadingScreen } from "./components/LoadingScreen";
 import { InfoModal } from "./components/InfoModal";
 import { Play, Pause, X, LocateFixed } from "lucide-react";
@@ -80,6 +81,7 @@ export default function App() {
   const [cameraPreset, setCameraPreset] = useState<CameraPreset | null>(null);
   const [followMode, setFollowMode] = useState(false);
   const [showInfo, setShowInfo] = useState(false);
+  const { isMobile } = useIsMobile();
 
   // 模擬時間
   const simTimeRef = useRef(Date.now() / 1000);
@@ -288,23 +290,26 @@ export default function App() {
         onClearCountries={() => setVisibleCountries(new Set())}
         onInfoClick={() => setShowInfo(true)}
         onCameraPreset={(preset) => setCameraPreset(preset as CameraPreset)}
+        isMobile={isMobile}
       />
 
       {/* Header */}
-      <div style={{ position: "absolute", top: 16, left: 76, zIndex: 10, pointerEvents: "none", fontFamily: FONT }}>
-        <h1 style={{ margin: 0, fontSize: 22, fontWeight: 700, color: "#fff", letterSpacing: -0.3 }}>
+      <div style={{ position: "absolute", top: isMobile ? 8 : 16, left: isMobile ? 12 : 76, zIndex: 10, pointerEvents: "none", fontFamily: FONT }}>
+        <h1 style={{ margin: 0, fontSize: isMobile ? 17 : 22, fontWeight: 700, color: "#fff", letterSpacing: -0.3 }}>
           Satellite Tracker
         </h1>
-        <div style={{ display: "flex", alignItems: "center", gap: 6, marginTop: 4 }}>
-          <span style={{ fontSize: 13, color: "rgba(255,255,255,0.7)" }}>{visibleCount.toLocaleString()} satellites</span>
-          <span style={{ fontSize: 13, color: "rgba(255,255,255,0.3)" }}>·</span>
-          <span style={{ fontSize: 13, color: "rgba(255,255,255,0.7)" }}>{displayTime}</span>
-        </div>
         <div style={{ display: "flex", alignItems: "center", gap: 6, marginTop: 2 }}>
-          <span style={{ fontSize: 12, color: "rgba(255,255,255,0.45)" }}>dist {cameraInfo.distance.toFixed(1)}</span>
-          <span style={{ fontSize: 12, color: "rgba(255,255,255,0.45)" }}>az {cameraInfo.azimuth}°</span>
-          <span style={{ fontSize: 12, color: "rgba(255,255,255,0.45)" }}>el {cameraInfo.polar}°</span>
+          <span style={{ fontSize: isMobile ? 11 : 13, color: "rgba(255,255,255,0.7)" }}>{visibleCount.toLocaleString()} satellites</span>
+          <span style={{ fontSize: isMobile ? 11 : 13, color: "rgba(255,255,255,0.3)" }}>·</span>
+          <span style={{ fontSize: isMobile ? 11 : 13, color: "rgba(255,255,255,0.7)" }}>{displayTime}</span>
         </div>
+        {!isMobile && (
+          <div style={{ display: "flex", alignItems: "center", gap: 6, marginTop: 2 }}>
+            <span style={{ fontSize: 12, color: "rgba(255,255,255,0.45)" }}>dist {cameraInfo.distance.toFixed(1)}</span>
+            <span style={{ fontSize: 12, color: "rgba(255,255,255,0.45)" }}>az {cameraInfo.azimuth}°</span>
+            <span style={{ fontSize: 12, color: "rgba(255,255,255,0.45)" }}>el {cameraInfo.polar}°</span>
+          </div>
+        )}
       </div>
 
       {/* 右上角追蹤按鈕 */}
@@ -337,7 +342,10 @@ export default function App() {
         const satColor = colors[selectedSat.orbitType] ?? catInfo?.color ?? "#5B9CF6";
         return (
           <div style={{
-            position: "absolute", top: 60, right: 16, width: 300, maxHeight: "calc(100vh - 140px)", zIndex: 10,
+            position: "absolute", zIndex: 10,
+            ...(isMobile
+              ? { bottom: 58, left: 8, right: 8, maxHeight: "45vh", width: "auto" }
+              : { top: 60, right: 16, width: 300, maxHeight: "calc(100vh - 140px)" }),
             overflowY: "auto",
             background: "#12161ECC", backdropFilter: "blur(24px)",
             borderRadius: 14, border: "1px solid rgba(255,255,255,0.06)",
@@ -433,56 +441,62 @@ export default function App() {
 
       {/* Timeline Bar */}
       <div style={{
-        position: "absolute", bottom: 16, left: "50%", transform: "translateX(-50%)", zIndex: 10,
-        display: "flex", alignItems: "center", gap: 10, height: 36,
-        padding: "0 16px 0 6px",
+        position: "absolute",
+        bottom: isMobile ? 58 : 16,
+        left: "50%", transform: "translateX(-50%)", zIndex: 10,
+        display: "flex", alignItems: "center",
+        gap: isMobile ? 6 : 10,
+        height: isMobile ? 32 : 36,
+        padding: isMobile ? "0 10px 0 4px" : "0 16px 0 6px",
         background: "#12161ECC", backdropFilter: "blur(24px)",
         borderRadius: 18, border: "1px solid rgba(255,255,255,0.06)",
-        fontFamily: FONT,
+        fontFamily: FONT, maxWidth: isMobile ? "calc(100vw - 16px)" : undefined,
       }}>
         {/* Play/Pause */}
         <button onClick={() => setPlaying((p) => !p)} style={{
-          width: 28, height: 28, borderRadius: 14,
+          width: isMobile ? 24 : 28, height: isMobile ? 24 : 28, borderRadius: 14,
           display: "flex", alignItems: "center", justifyContent: "center",
           background: "rgba(91,156,246,0.12)", border: "none",
-          color: "#5B9CF6", cursor: "pointer", padding: 0,
+          color: "#5B9CF6", cursor: "pointer", padding: 0, flexShrink: 0,
         }}>
-          {playing ? <Pause size={12} /> : <Play size={12} />}
+          {playing ? <Pause size={isMobile ? 10 : 12} /> : <Play size={isMobile ? 10 : 12} />}
         </button>
 
         {/* Speed buttons */}
         <div style={{ display: "flex", gap: 2 }}>
           {SPEED_OPTIONS.map((s) => (
             <button key={s} onClick={() => setSpeed(s)} style={{
-              height: 24, minWidth: 30, padding: "0 6px",
+              height: isMobile ? 20 : 24, minWidth: isMobile ? 26 : 30, padding: "0 4px",
               borderRadius: 6, border: "none",
               background: speed === s ? "rgba(91,156,246,0.12)" : "transparent",
               color: speed === s ? "#5B9CF6" : "rgba(255,255,255,0.35)",
-              cursor: "pointer", fontFamily: FONT, fontSize: 11, fontWeight: 500,
+              cursor: "pointer", fontFamily: FONT, fontSize: isMobile ? 10 : 11, fontWeight: 500,
             }}>
               {s}x
             </button>
           ))}
         </div>
 
-        {/* Slider track */}
-        <div style={{
-          width: 180, height: 3, borderRadius: 2,
-          background: "rgba(255,255,255,0.08)", overflow: "hidden", flexShrink: 0,
-        }}>
-          <div style={{ height: "100%", width: "50%", borderRadius: 2, background: "#5B9CF6" }} />
-        </div>
+        {/* Slider track — 手機隱藏 */}
+        {!isMobile && (
+          <div style={{
+            width: 180, height: 3, borderRadius: 2,
+            background: "rgba(255,255,255,0.08)", overflow: "hidden", flexShrink: 0,
+          }}>
+            <div style={{ height: "100%", width: "50%", borderRadius: 2, background: "#5B9CF6" }} />
+          </div>
+        )}
 
         {/* Time */}
-        <span style={{ fontSize: 12, fontWeight: 500, color: "rgba(255,255,255,0.7)", minWidth: 100, textAlign: "center" }}>
+        <span style={{ fontSize: isMobile ? 10 : 12, fontWeight: 500, color: "rgba(255,255,255,0.7)", minWidth: isMobile ? 70 : 100, textAlign: "center" }}>
           {displayTime}
         </span>
 
         {/* NOW */}
         <button onClick={() => { simTimeRef.current = Date.now() / 1000; }} style={{
-          height: 24, padding: "0 10px", borderRadius: 6, border: "none",
+          height: isMobile ? 20 : 24, padding: "0 8px", borderRadius: 6, border: "none",
           background: "rgba(91,156,246,0.12)", color: "#5B9CF6",
-          cursor: "pointer", fontFamily: FONT, fontSize: 10, fontWeight: 600, letterSpacing: 0.5,
+          cursor: "pointer", fontFamily: FONT, fontSize: 10, fontWeight: 600, letterSpacing: 0.5, flexShrink: 0,
         }}>
           NOW
         </button>

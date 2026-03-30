@@ -50,6 +50,7 @@ export interface SidebarProps {
   onClearCountries?: () => void;
   onInfoClick?: () => void;
   onCameraPreset?: (preset: string) => void;
+  isMobile?: boolean;
 }
 
 /* ── Design Tokens (from Pencil) ─────────────────────── */
@@ -721,99 +722,153 @@ const PANELS: Array<{ id: PanelId; icon: (props: { size: number }) => ReactNode;
 export function Sidebar(props: SidebarProps) {
   const [activePanel, setActivePanel] = useState<PanelId | null>(null);
   const [hasOpenedOnce, setHasOpenedOnce] = useState(false);
+  const mobile = props.isMobile;
+
+  const handleIconClick = (id: PanelId) => {
+    setActivePanel((p) => p === id ? null : id);
+    if (!hasOpenedOnce) setHasOpenedOnce(true);
+  };
+
+  const panelContent = activePanel && (
+    <div className="sidebar-scrollbar" style={{
+      position: "absolute",
+      ...(mobile
+        ? { bottom: 56, left: 8, right: 8, maxHeight: "60vh" }
+        : { top: 82, left: 76, maxHeight: "calc(100vh - 140px)", width: PANEL_WIDTH[activePanel] }),
+      zIndex: 19,
+      background: T.BG_PANEL, backdropFilter: BLUR_PANEL,
+      borderRadius: 14, border: `1px solid ${T.BORDER_SUBTLE}`,
+      fontFamily: T.FONT, fontSize: 13, color: T.FONT_PRIMARY,
+      overflowY: "auto",
+      animation: mobile ? "mobileSlideUp 0.2s ease-out" : "sidebarSlideIn 0.2s ease-out",
+    }}>
+      <div style={{
+        display: "flex", justifyContent: "space-between", alignItems: "center",
+        padding: "16px 20px",
+      }}>
+        <span style={{ fontSize: 15, fontWeight: 600, fontFamily: T.FONT }}>{PANELS.find((p) => p.id === activePanel)?.title}</span>
+        <button onClick={() => setActivePanel(null)} style={{
+          width: 24, height: 24, display: "flex", alignItems: "center", justifyContent: "center",
+          background: "rgba(255,255,255,0.06)", border: `1px solid ${T.BORDER_SUBTLE}`, borderRadius: 6,
+          color: T.DIM, cursor: "pointer", padding: 0,
+        }}>
+          <X size={12} />
+        </button>
+      </div>
+      <div style={{ padding: "0 20px 16px" }}>
+        {activePanel === "settings" && <SettingsPanel {...props} />}
+        {activePanel === "filters" && <FiltersPanel {...props} />}
+        {activePanel === "colors" && <ColorsPanel {...props} />}
+        {activePanel === "stats" && <StatsPanel {...props} />}
+        {activePanel === "camera" && <CameraPanel {...props} />}
+      </div>
+    </div>
+  );
 
   return (
     <>
       <style>{`
         @keyframes sidebarSlideIn { from { opacity: 0; transform: translateX(-8px); } to { opacity: 1; transform: translateX(0); } }
+        @keyframes mobileSlideUp { from { opacity: 0; transform: translateY(16px); } to { opacity: 1; transform: translateY(0); } }
         .sidebar-scrollbar::-webkit-scrollbar { width: 4px; }
         .sidebar-scrollbar::-webkit-scrollbar-track { background: transparent; }
         .sidebar-scrollbar::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.08); border-radius: 2px; }
       `}</style>
 
-      {/* Icon Rail — floating card */}
-      <div style={{
-        position: "absolute", top: 82, left: 12, zIndex: 20,
-        width: 52, display: "flex", flexDirection: "column", alignItems: "center",
-        padding: "14px 0", gap: 6,
-        background: T.BG_PANEL, backdropFilter: BLUR_PANEL,
-        borderRadius: 14, border: `1px solid ${T.BORDER_SUBTLE}`,
-      }}>
-        {/* 衛星品牌圖示 */}
-        <div style={{
-          width: 40, height: 40, borderRadius: 10,
-          display: "flex", alignItems: "center", justifyContent: "center",
-          background: "linear-gradient(180deg, #5B9CF6 0%, #3D6DB3 100%)",
-          boxShadow: "0 4px 16px rgba(91,156,246,0.25)",
-        }}>
-          <Satellite size={22} color="#fff" />
-        </div>
-
-        {/* 分隔線 */}
-        <div style={{ width: 32, height: 1, background: T.BORDER }} />
-
-        {/* 導航圖示 */}
-        {PANELS.map(({ id, icon: Icon, title }) => (
-          <RailIcon key={id} active={activePanel === id} onClick={() => { setActivePanel((p) => p === id ? null : id); if (!hasOpenedOnce) setHasOpenedOnce(true); }} title={title}>
-            <div style={{ position: "relative", display: "flex", alignItems: "center", justifyContent: "center" }}>
-              <Icon size={20} />
-              {id === "settings" && !hasOpenedOnce && (
-                <div style={{
-                  position: "absolute", top: -2, right: -2,
-                  width: 6, height: 6, borderRadius: "50%",
-                  background: "#EF4444",
-                  boxShadow: "0 0 4px rgba(239,68,68,0.6)",
-                }} />
-              )}
-            </div>
-          </RailIcon>
-        ))}
-
-        {/* 分隔線 */}
-        <div style={{ width: 32, height: 1, background: T.BORDER }} />
-
-        {/* Info 按鈕 */}
-        <RailIcon active={false} onClick={() => props.onInfoClick?.()} title="使用指南">
-          <Info size={20} />
-        </RailIcon>
-      </div>
-
-      {/* 浮動面板 */}
-      {activePanel && (
-        <div className="sidebar-scrollbar" style={{
-          position: "absolute", top: 82, left: 76,
-          maxHeight: "calc(100vh - 140px)",
-          width: PANEL_WIDTH[activePanel],
-          zIndex: 19,
-          background: T.BG_PANEL, backdropFilter: BLUR_PANEL,
-          borderRadius: 14, border: `1px solid ${T.BORDER_SUBTLE}`,
-          fontFamily: T.FONT, fontSize: 13, color: T.FONT_PRIMARY,
-          overflowY: "auto", animation: "sidebarSlideIn 0.2s ease-out",
-        }}>
-          {/* Panel Header */}
+      {mobile ? (
+        /* ── 手機版：底部水平工具列 ── */
+        <>
           <div style={{
-            display: "flex", justifyContent: "space-between", alignItems: "center",
-            padding: "16px 20px",
+            position: "absolute", bottom: 0, left: 0, right: 0, zIndex: 20,
+            height: 52, display: "flex", alignItems: "center", justifyContent: "center",
+            gap: 4, padding: "0 8px",
+            background: T.BG_PANEL, backdropFilter: BLUR_PANEL,
+            borderTop: `1px solid ${T.BORDER_SUBTLE}`,
           }}>
-            <span style={{ fontSize: 15, fontWeight: 600, fontFamily: T.FONT }}>{PANELS.find((p) => p.id === activePanel)?.title}</span>
-            <button onClick={() => setActivePanel(null)} style={{
-              width: 24, height: 24, display: "flex", alignItems: "center", justifyContent: "center",
-              background: "rgba(255,255,255,0.06)", border: `1px solid ${T.BORDER_SUBTLE}`, borderRadius: 6,
-              color: T.DIM, cursor: "pointer", padding: 0,
+            {/* 品牌圖示 */}
+            <div style={{
+              width: 32, height: 32, borderRadius: 8, flexShrink: 0,
+              display: "flex", alignItems: "center", justifyContent: "center",
+              background: "linear-gradient(180deg, #5B9CF6 0%, #3D6DB3 100%)",
             }}>
-              <X size={12} />
+              <Satellite size={16} color="#fff" />
+            </div>
+
+            <div style={{ width: 1, height: 24, background: T.BORDER, margin: "0 2px", flexShrink: 0 }} />
+
+            {PANELS.map(({ id, icon: Icon, title }) => (
+              <button key={id} title={title} onClick={() => handleIconClick(id)} style={{
+                width: 40, height: 40, display: "flex", alignItems: "center", justifyContent: "center",
+                background: activePanel === id ? T.ACCENT_DIM : "transparent",
+                border: "none", borderRadius: 8, cursor: "pointer",
+                color: activePanel === id ? T.ACCENT : T.FONT_TERTIARY,
+                position: "relative", padding: 0,
+              }}>
+                <Icon size={18} />
+                {id === "settings" && !hasOpenedOnce && (
+                  <div style={{
+                    position: "absolute", top: 6, right: 6,
+                    width: 5, height: 5, borderRadius: "50%",
+                    background: "#EF4444", boxShadow: "0 0 4px rgba(239,68,68,0.6)",
+                  }} />
+                )}
+              </button>
+            ))}
+
+            <div style={{ width: 1, height: 24, background: T.BORDER, margin: "0 2px", flexShrink: 0 }} />
+
+            <button title="使用指南" onClick={() => props.onInfoClick?.()} style={{
+              width: 40, height: 40, display: "flex", alignItems: "center", justifyContent: "center",
+              background: "transparent", border: "none", borderRadius: 8, cursor: "pointer",
+              color: T.FONT_TERTIARY, padding: 0,
+            }}>
+              <Info size={18} />
             </button>
           </div>
 
-          {/* Panel Content */}
-          <div style={{ padding: "0 20px 16px" }}>
-            {activePanel === "settings" && <SettingsPanel {...props} />}
-            {activePanel === "filters" && <FiltersPanel {...props} />}
-            {activePanel === "colors" && <ColorsPanel {...props} />}
-            {activePanel === "stats" && <StatsPanel {...props} />}
-            {activePanel === "camera" && <CameraPanel {...props} />}
+          {/* 面板從底部滑出 */}
+          {panelContent}
+        </>
+      ) : (
+        /* ── 桌面版：左側垂直浮動卡片 ── */
+        <>
+          <div style={{
+            position: "absolute", top: 82, left: 12, zIndex: 20,
+            width: 52, display: "flex", flexDirection: "column", alignItems: "center",
+            padding: "14px 0", gap: 6,
+            background: T.BG_PANEL, backdropFilter: BLUR_PANEL,
+            borderRadius: 14, border: `1px solid ${T.BORDER_SUBTLE}`,
+          }}>
+            <div style={{
+              width: 40, height: 40, borderRadius: 10,
+              display: "flex", alignItems: "center", justifyContent: "center",
+              background: "linear-gradient(180deg, #5B9CF6 0%, #3D6DB3 100%)",
+              boxShadow: "0 4px 16px rgba(91,156,246,0.25)",
+            }}>
+              <Satellite size={22} color="#fff" />
+            </div>
+            <div style={{ width: 32, height: 1, background: T.BORDER }} />
+            {PANELS.map(({ id, icon: Icon, title }) => (
+              <RailIcon key={id} active={activePanel === id} onClick={() => handleIconClick(id)} title={title}>
+                <div style={{ position: "relative", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                  <Icon size={20} />
+                  {id === "settings" && !hasOpenedOnce && (
+                    <div style={{
+                      position: "absolute", top: -2, right: -2,
+                      width: 6, height: 6, borderRadius: "50%",
+                      background: "#EF4444", boxShadow: "0 0 4px rgba(239,68,68,0.6)",
+                    }} />
+                  )}
+                </div>
+              </RailIcon>
+            ))}
+            <div style={{ width: 32, height: 1, background: T.BORDER }} />
+            <RailIcon active={false} onClick={() => props.onInfoClick?.()} title="使用指南">
+              <Info size={20} />
+            </RailIcon>
           </div>
-        </div>
+          {panelContent}
+        </>
       )}
     </>
   );
