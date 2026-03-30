@@ -4,6 +4,12 @@
 
 從 Supabase 載入 ~15,000 顆衛星（含太空碎片）的 TLE 軌道參數，用 [satellite.js](https://github.com/shashwatak/satellite-js) 在瀏覽器即時計算位置，以 Three.js 渲染在 3D 地球上。
 
+![Satellite Tracker Overview](screenshot/overview.png)
+
+![Closeup View](screenshot/closeup.png)
+
+![Starlink Info Card](screenshot/starlink-info.png)
+
 ## 功能
 
 ### 核心渲染
