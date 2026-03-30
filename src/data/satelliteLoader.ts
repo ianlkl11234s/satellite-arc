@@ -162,7 +162,7 @@ function computeOrbitPath(
     const t = new Date(startTime.getTime() + i * stepSec * 1000);
     const pos = propagate(satrec, t);
     if (!pos) continue;
-    points.push([pos.lat, pos.lng, pos.altScaled, t.getTime() / 1000]);
+    points.push([pos.lat, pos.lng, pos.altReal, t.getTime() / 1000]);
   }
 
   return points;
