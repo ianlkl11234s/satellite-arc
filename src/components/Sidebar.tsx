@@ -263,7 +263,12 @@ function FiltersPanel(props: SidebarProps) {
       const c = t.country_operator ?? "Unknown";
       map.set(c, (map.get(c) ?? 0) + 1);
     }
-    return [...map.entries()].sort((a, b) => b[1] - a[1]);
+    // Taiwan 置頂，其餘按數量降序
+    return [...map.entries()].sort((a, b) => {
+      if (a[0] === "Taiwan") return -1;
+      if (b[0] === "Taiwan") return 1;
+      return b[1] - a[1];
+    });
   }, [props.tles]);
 
   const purposes = useMemo(() => {
