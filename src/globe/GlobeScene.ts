@@ -83,6 +83,10 @@ export class GlobeScene {
   selectedId: string | null = null;
   private selectedRing: THREE.Line | null = null;
 
+  // 追蹤模式
+  followMode = false;
+  private followLerp = 0.03; // 追蹤平滑度
+
   constructor(container: HTMLElement) {
     this.scene = new THREE.Scene();
     this.scene.background = new THREE.Color(0x020208);
@@ -101,7 +105,14 @@ export class GlobeScene {
     this.controls.dampingFactor = 0.05;
     this.controls.minDistance = 1.3;
     this.controls.maxDistance = 8;
-    this.controls.enablePan = false;
+    this.controls.enablePan = true;
+    this.controls.panSpeed = 0.5;
+    // 限制平移範圍，避免地球飛出畫面
+    this.controls.addEventListener("change", () => {
+      const target = this.controls.target;
+      const maxPan = 2;
+      target.clampScalar(-maxPan, maxPan);
+    });
 
     this.earth = new EarthMesh();
     this.scene.add(this.earth.group);
@@ -252,8 +263,62 @@ export class GlobeScene {
     this.selectedRing.lookAt(0, 0, 0);
   }
 
+  /* ── Camera presets ──────────────────────────────────── */
+
+  setCameraPreset(preset: "north_pole" | "south_pole" | "equator" | "overview" | "closeup") {
+    // 停止追蹤模式
+    this.followMode = false;
+    // 重置 target 到原點
+    this.controls.target.set(0, 0, 0);
+
+    switch (preset) {
+      case "north_pole":
+        this.camera.position.set(0, 4, 0.01);
+        break;
+      case "south_pole":
+        this.camera.position.set(0, -4, 0.01);
+        break;
+      case "equator":
+        this.camera.position.set(0, 0, 3.5);
+        break;
+      case "overview":
+        this.camera.position.set(0, 2, 6);
+        break;
+      case "closeup":
+        this.camera.position.set(0, 0.3, 1.5);
+        break;
+    }
+    this.controls.update();
+  }
+
+  resetPan() {
+    this.controls.target.set(0, 0, 0);
+    this.controls.update();
+  }
+
+  setFollowMode(enabled: boolean) {
+    this.followMode = enabled;
+    if (!enabled) {
+      // 回到原點 target
+      this.controls.target.set(0, 0, 0);
+      this.controls.update();
+    }
+  }
+
   private animate() {
     this.animId = requestAnimationFrame(() => this.animate());
+
+    // 追蹤模式：讓 controls.target 跟隨選中衛星
+    if (this.followMode && this.selectedId) {
+      const sat = this.lastPositions.find((p) => p.id === this.selectedId);
+      if (sat) {
+        const target = this.controls.target;
+        target.x += (sat.x - target.x) * this.followLerp;
+        target.y += (sat.y - target.y) * this.followLerp;
+        target.z += (sat.z - target.z) * this.followLerp;
+      }
+    }
+
     this.controls.update();
 
     const elapsed = this.clock.getElapsedTime();

@@ -12,6 +12,8 @@ export interface CameraInfo {
   polar: number;
 }
 
+export type CameraPreset = "north_pole" | "south_pole" | "equator" | "overview" | "closeup";
+
 interface GlobeViewProps {
   tles: SatelliteTLE[];
   orbits: Array<{ path: [number, number, number, number][]; orbitType: string }>;
@@ -29,6 +31,9 @@ interface GlobeViewProps {
   onSatelliteClick?: (sat: SatellitePosition | null) => void;
   selectedId: string | null;
   onCameraChange?: (info: CameraInfo) => void;
+  cameraPreset?: CameraPreset | null;
+  onPresetApplied?: () => void;
+  followMode?: boolean;
 }
 
 const CONSTELLATION_COUNTRY: Record<string, string> = {
@@ -43,6 +48,7 @@ export function GlobeView({
   orbitOpacity, orbScale, orbOpacity, trailLength,
   colors, visibleConstellations, visibleCountries,
   onSatelliteClick, selectedId, onCameraChange,
+  cameraPreset, onPresetApplied, followMode,
 }: GlobeViewProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const sceneRef = useRef<GlobeScene | null>(null);
@@ -105,6 +111,19 @@ export function GlobeView({
   useEffect(() => {
     if (sceneRef.current) sceneRef.current.setColors(colors);
   }, [colors]);
+
+  // 相機預設視角
+  useEffect(() => {
+    if (sceneRef.current && cameraPreset) {
+      sceneRef.current.setCameraPreset(cameraPreset);
+      onPresetApplied?.();
+    }
+  }, [cameraPreset, onPresetApplied]);
+
+  // 追蹤模式
+  useEffect(() => {
+    if (sceneRef.current) sceneRef.current.setFollowMode(!!followMode);
+  }, [followMode]);
 
   return (
     <div ref={containerRef} style={{ position: "absolute", inset: 0, width: "100%", height: "100%", cursor: "grab" }} />

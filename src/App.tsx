@@ -1,12 +1,12 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { GlobeView, type CameraInfo } from "./globe/GlobeView";
+import { GlobeView, type CameraInfo, type CameraPreset } from "./globe/GlobeView";
 import type { SatellitePosition } from "./globe/GlobeScene";
 import type { SatelliteTLE } from "./data/satelliteLoader";
 import { loadSatelliteTLEs, convertSatellitesToFlights, loadSatelliteCatalog, type SatelliteCatalog, CATEGORIES } from "./data/satelliteLoader";
 import { getSatelliteInfo, ORBIT_TYPE_LABELS } from "./data/satelliteInfo";
 import { Sidebar } from "./components/Sidebar";
 import { LoadingScreen } from "./components/LoadingScreen";
-import { Play, Pause, X } from "lucide-react";
+import { Play, Pause, X, Navigation, Globe, Eye, Maximize2, Crosshair, LocateFixed } from "lucide-react";
 
 const SPEED_OPTIONS = [10, 60, 300, 600];
 const FONT = "'Inter', sans-serif";
@@ -74,6 +74,10 @@ export default function App() {
   const [selectedSat, setSelectedSat] = useState<SatellitePosition | null>(null);
   const [catalog, setCatalog] = useState<SatelliteCatalog | null>(null);
   const [catalogLoading, setCatalogLoading] = useState(false);
+
+  // 相機控制
+  const [cameraPreset, setCameraPreset] = useState<CameraPreset | null>(null);
+  const [followMode, setFollowMode] = useState(false);
 
   // 模擬時間
   const simTimeRef = useRef(Date.now() / 1000);
@@ -164,6 +168,8 @@ export default function App() {
     setVisibleCountries((prev) => { const n = new Set(prev); if (n.has(country)) n.delete(country); else n.add(country); return n; });
   }, []);
 
+  const handlePresetApplied = useCallback(() => setCameraPreset(null), []);
+
   const handleColorChange = useCallback((type: string, color: string) => {
     setColors((prev) => ({ ...prev, [type]: color }));
   }, []);
@@ -171,6 +177,7 @@ export default function App() {
   const handleSatelliteClick = useCallback((sat: SatellitePosition | null) => {
     setSelectedSat(sat);
     setCatalog(null);
+    if (!sat) setFollowMode(false);
     if (sat) {
       const noradId = parseInt(sat.id.replace("sat_", ""), 10);
       if (!isNaN(noradId)) {
@@ -213,6 +220,9 @@ export default function App() {
         onSatelliteClick={handleSatelliteClick}
         selectedId={selectedSat?.id ?? null}
         onCameraChange={setCameraInfo}
+        cameraPreset={cameraPreset}
+        onPresetApplied={handlePresetApplied}
+        followMode={followMode}
       />
 
       {/* Icon Rail Sidebar */}
@@ -259,6 +269,57 @@ export default function App() {
           <span style={{ fontSize: 12, color: "rgba(255,255,255,0.45)" }}>az {cameraInfo.azimuth}°</span>
           <span style={{ fontSize: 12, color: "rgba(255,255,255,0.45)" }}>el {cameraInfo.polar}°</span>
         </div>
+      </div>
+
+      {/* 右上角視角控制 */}
+      <div style={{
+        position: "absolute", top: 16, right: 16, zIndex: 10,
+        display: "flex", alignItems: "center", gap: 8, fontFamily: FONT,
+      }}>
+        {/* 預設視角 */}
+        {([
+          { preset: "north_pole" as CameraPreset, icon: <Navigation size={14} style={{ transform: "rotate(180deg)" }} />, label: "北極" },
+          { preset: "south_pole" as CameraPreset, icon: <Navigation size={14} />, label: "南極" },
+          { preset: "equator" as CameraPreset, icon: <Globe size={14} />, label: "赤道" },
+          { preset: "overview" as CameraPreset, icon: <Maximize2 size={14} />, label: "全景" },
+          { preset: "closeup" as CameraPreset, icon: <Eye size={14} />, label: "特寫" },
+        ]).map(({ preset, icon, label }) => (
+          <button key={preset} title={label} onClick={() => setCameraPreset(preset)} style={{
+            display: "flex", alignItems: "center", justifyContent: "center", gap: 6,
+            height: 32, padding: "0 12px", borderRadius: 8, border: "1px solid rgba(255,255,255,0.06)",
+            background: "#12161ECC", backdropFilter: "blur(24px)",
+            color: "rgba(255,255,255,0.7)", cursor: "pointer", fontSize: 12, fontFamily: FONT,
+          }}>
+            {icon}
+            <span style={{ fontSize: 12 }}>{label}</span>
+          </button>
+        ))}
+
+        {/* 追蹤模式 */}
+        {selectedSat && (
+          <button onClick={() => setFollowMode((f) => !f)} title={followMode ? "停止追蹤" : "追蹤衛星"} style={{
+            display: "flex", alignItems: "center", justifyContent: "center", gap: 6,
+            height: 32, padding: "0 14px", borderRadius: 8,
+            border: `1px solid ${followMode ? "rgba(91,156,246,0.3)" : "rgba(255,255,255,0.06)"}`,
+            background: followMode ? "rgba(91,156,246,0.15)" : "#12161ECC",
+            backdropFilter: "blur(24px)",
+            color: followMode ? "#5B9CF6" : "rgba(255,255,255,0.7)",
+            cursor: "pointer", fontSize: 12, fontFamily: FONT, fontWeight: 500,
+          }}>
+            <LocateFixed size={14} />
+            <span>{followMode ? "追蹤中" : "追蹤"}</span>
+          </button>
+        )}
+
+        {/* 重置平移 */}
+        <button onClick={() => setCameraPreset("equator")} title="重置視角" style={{
+          display: "flex", alignItems: "center", justifyContent: "center",
+          width: 32, height: 32, borderRadius: 8, border: "1px solid rgba(255,255,255,0.06)",
+          background: "#12161ECC", backdropFilter: "blur(24px)",
+          color: "rgba(255,255,255,0.5)", cursor: "pointer", padding: 0,
+        }}>
+          <Crosshair size={14} />
+        </button>
       </div>
 
       {/* 選中衛星資訊卡 */}
