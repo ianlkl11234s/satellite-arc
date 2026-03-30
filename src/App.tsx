@@ -6,14 +6,25 @@ import { loadSatelliteTLEs, convertSatellitesToFlights, loadSatelliteCatalog, ty
 import { getSatelliteInfo, ORBIT_TYPE_LABELS } from "./data/satelliteInfo";
 import { Sidebar } from "./components/Sidebar";
 import { LoadingScreen } from "./components/LoadingScreen";
+import { Play, Pause, X } from "lucide-react";
 
-const SPEED_OPTIONS = [1, 10, 30, 60, 120, 300, 600];
+const SPEED_OPTIONS = [10, 60, 300, 600];
+const FONT = "'Inter', sans-serif";
 const ALL_CATEGORIES = Object.keys(CATEGORIES);
 
 // 從 CATEGORIES 建立初始色碼表
 const DEFAULT_COLORS: Record<string, string> = Object.fromEntries(
   Object.entries(CATEGORIES).map(([k, v]) => [k, v.color]),
 );
+
+function InfoRow({ label, value }: { label: string; value: React.ReactNode }) {
+  return (
+    <div style={{ display: "flex", alignItems: "baseline", fontFamily: FONT }}>
+      <span style={{ width: 90, flexShrink: 0, fontSize: 12, color: "rgba(255,255,255,0.35)" }}>{label}</span>
+      <span style={{ fontSize: 13, color: "rgba(255,255,255,0.85)" }}>{value}</span>
+    </div>
+  );
+}
 
 export default function App() {
   const [tles, setTles] = useState<SatelliteTLE[]>([]);
@@ -177,7 +188,7 @@ export default function App() {
 
   if (error) {
     return (
-      <div style={{ width: "100vw", height: "100vh", display: "flex", alignItems: "center", justifyContent: "center", background: "#020208", color: "#ef5350", fontFamily: "monospace" }}>
+      <div style={{ width: "100vw", height: "100vh", display: "flex", alignItems: "center", justifyContent: "center", background: "#020208", color: "#ef5350", fontFamily: FONT }}>
         Error: {error}
       </div>
     );
@@ -233,78 +244,98 @@ export default function App() {
         onClearCountries={() => setVisibleCountries(new Set())}
       />
 
-      {/* Header（右移避開 sidebar） */}
-      <div style={{ position: "absolute", top: 10, left: 60, zIndex: 10, pointerEvents: "none" }}>
-        <h1 style={{ margin: 0, fontSize: 22, color: "#fff", fontFamily: "monospace", letterSpacing: 3, textShadow: "0 2px 8px rgba(0,0,0,0.8)" }}>
+      {/* Header */}
+      <div style={{ position: "absolute", top: 16, left: 76, zIndex: 10, pointerEvents: "none", fontFamily: FONT }}>
+        <h1 style={{ margin: 0, fontSize: 22, fontWeight: 700, color: "#fff", letterSpacing: -0.3 }}>
           Satellite Tracker
         </h1>
-        <div style={{ fontSize: 12, color: "rgba(255,255,255,0.45)", fontFamily: "monospace", marginTop: 3, lineHeight: 1.6 }}>
-          {visibleCount.toLocaleString()} satellites · {displayTime}<br />
-          dist {cameraInfo.distance.toFixed(1)} az {cameraInfo.azimuth}° el {cameraInfo.polar}°
+        <div style={{ display: "flex", alignItems: "center", gap: 6, marginTop: 4 }}>
+          <span style={{ fontSize: 13, color: "rgba(255,255,255,0.7)" }}>{visibleCount.toLocaleString()} satellites</span>
+          <span style={{ fontSize: 13, color: "rgba(255,255,255,0.3)" }}>·</span>
+          <span style={{ fontSize: 13, color: "rgba(255,255,255,0.7)" }}>{displayTime}</span>
+        </div>
+        <div style={{ display: "flex", alignItems: "center", gap: 6, marginTop: 2 }}>
+          <span style={{ fontSize: 12, color: "rgba(255,255,255,0.45)" }}>dist {cameraInfo.distance.toFixed(1)}</span>
+          <span style={{ fontSize: 12, color: "rgba(255,255,255,0.45)" }}>az {cameraInfo.azimuth}°</span>
+          <span style={{ fontSize: 12, color: "rgba(255,255,255,0.45)" }}>el {cameraInfo.polar}°</span>
         </div>
       </div>
 
-      {/* 選中衛星資訊（右側浮框） */}
+      {/* 選中衛星資訊卡 */}
       {selectedSat && (() => {
         const info = getSatelliteInfo(selectedSat.name);
         const orbitLabel = ORBIT_TYPE_LABELS[selectedSat.orbitType];
         const catInfo = CATEGORIES[selectedSat.orbitType];
-        const satColor = colors[selectedSat.orbitType] ?? catInfo?.color ?? "#4fc3f7";
+        const satColor = colors[selectedSat.orbitType] ?? catInfo?.color ?? "#5B9CF6";
         return (
           <div style={{
-            position: "absolute", top: 64, right: 12, width: 290, maxHeight: "calc(100vh - 140px)", zIndex: 10,
-            padding: "16px", overflowY: "auto",
-            background: "rgba(8,8,20,0.75)", backdropFilter: "blur(16px)",
-            borderRadius: 12, border: `1px solid ${satColor}44`,
-            fontFamily: "monospace", fontSize: 12, color: "#fff",
+            position: "absolute", top: 60, right: 16, width: 300, maxHeight: "calc(100vh - 140px)", zIndex: 10,
+            overflowY: "auto",
+            background: "#12161ECC", backdropFilter: "blur(24px)",
+            borderRadius: 14, border: "1px solid rgba(255,255,255,0.06)",
+            fontFamily: FONT, fontSize: 13, color: "#fff",
           }}>
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 6 }}>
-              <div>
-                <div style={{ fontSize: 15, fontWeight: 700 }}>{selectedSat.name}</div>
-                {info && <div style={{ fontSize: 13, color: satColor, marginTop: 2 }}>{info.zhName}</div>}
+            {/* Card Header */}
+            <div style={{ padding: "16px 20px 12px" }}>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 8 }}>
+                <div style={{ flex: 1 }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                    <div style={{ width: 8, height: 8, borderRadius: "50%", background: satColor, flexShrink: 0 }} />
+                    <span style={{ fontSize: 16, fontWeight: 700 }}>{selectedSat.name}</span>
+                  </div>
+                  {info && <div style={{ fontSize: 13, color: "rgba(255,255,255,0.45)", marginTop: 4 }}>{info.zhName}</div>}
+                </div>
+                <button onClick={() => setSelectedSat(null)} style={{
+                  width: 24, height: 24, display: "flex", alignItems: "center", justifyContent: "center",
+                  background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.06)", borderRadius: 6,
+                  color: "rgba(255,255,255,0.4)", cursor: "pointer", padding: 0, flexShrink: 0,
+                }}>
+                  <X size={12} />
+                </button>
               </div>
-              <button onClick={() => setSelectedSat(null)} style={{ background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.15)", borderRadius: 4, color: "#aaa", cursor: "pointer", padding: "2px 8px", fontSize: 11, flexShrink: 0 }}>x</button>
+              {info && (
+                <div style={{ fontSize: 13, color: "rgba(255,255,255,0.45)", marginTop: 4 }}>
+                  {info.desc} · {info.country}
+                </div>
+              )}
             </div>
 
-            {info && (
-              <div style={{ fontSize: 11, color: "rgba(255,255,255,0.5)", marginBottom: 10, lineHeight: 1.5 }}>
-                {info.desc} · {info.country} · {info.purpose}
-              </div>
-            )}
+            {/* Divider */}
+            <div style={{ height: 1, background: "rgba(255,255,255,0.06)" }} />
 
-            <div style={{ display: "grid", gridTemplateColumns: "auto 1fr", gap: "5px 14px", opacity: 0.9 }}>
-              <span style={{ opacity: 0.4 }}>NORAD ID</span>
-              <span>{selectedSat.id.replace("sat_", "")}</span>
-              <span style={{ opacity: 0.4 }}>Category</span>
-              <span><span style={{ color: satColor }}>{catInfo?.en ?? selectedSat.orbitType}</span>{catInfo && <span style={{ opacity: 0.4 }}>（{catInfo.zh}）</span>}</span>
-              {orbitLabel && <><span style={{ opacity: 0.4 }}>Orbit</span><span>{orbitLabel.zh}</span></>}
-              <span style={{ opacity: 0.4 }}>Constellation</span>
-              <span>{selectedSat.constellation || (info?.zhName ?? "—")}</span>
+            {/* Card Body */}
+            <div style={{ padding: "12px 20px 16px", display: "flex", flexDirection: "column", gap: 10 }}>
+              <InfoRow label="NORAD ID" value={selectedSat.id.replace("sat_", "")} />
+              <InfoRow label="Category" value={<><span style={{ color: satColor }}>{catInfo?.en ?? selectedSat.orbitType}</span>{catInfo && <span style={{ color: "rgba(255,255,255,0.3)" }}>（{catInfo.zh}）</span>}</>} />
+              {orbitLabel && <InfoRow label="Orbit" value={orbitLabel.zh} />}
+              <InfoRow label="Constellation" value={selectedSat.constellation || (info?.zhName ?? "—")} />
 
-              {catalogLoading && <><span style={{ opacity: 0.4 }}>Loading</span><span style={{ opacity: 0.35 }}>...</span></>}
+              {catalogLoading && <InfoRow label="Loading" value="..." />}
 
               {catalog && (
                 <>
-                  <span style={{ opacity: 0.4 }}>Operator</span><span>{catalog.operator ?? "—"}</span>
-                  <span style={{ opacity: 0.4 }}>Country</span><span>{catalog.country_operator ?? info?.country ?? "—"}</span>
-                  <span style={{ opacity: 0.4 }}>Purpose</span><span>{catalog.purpose ?? info?.purpose ?? "—"}</span>
-                  {catalog.detailed_purpose && <><span style={{ opacity: 0.4 }}>Detail</span><span style={{ fontSize: 11 }}>{catalog.detailed_purpose}</span></>}
-                  <span style={{ opacity: 0.4 }}>Users</span><span>{catalog.users ?? "—"}</span>
-                  {catalog.launch_date && <><span style={{ opacity: 0.4 }}>Launched</span><span>{catalog.launch_date}</span></>}
-                  {catalog.launch_mass_kg && <><span style={{ opacity: 0.4 }}>Mass</span><span>{catalog.launch_mass_kg.toLocaleString()} kg</span></>}
-                  {catalog.expected_lifetime_yrs && <><span style={{ opacity: 0.4 }}>Lifetime</span><span>{catalog.expected_lifetime_yrs} yrs</span></>}
-                  {catalog.contractor && <><span style={{ opacity: 0.4 }}>Contractor</span><span style={{ fontSize: 11 }}>{catalog.contractor}</span></>}
-                  {catalog.launch_vehicle && <><span style={{ opacity: 0.4 }}>Vehicle</span><span style={{ fontSize: 11 }}>{catalog.launch_vehicle}</span></>}
-                  {catalog.launch_site && <><span style={{ opacity: 0.4 }}>Launch Site</span><span style={{ fontSize: 11 }}>{catalog.launch_site}</span></>}
+                  <InfoRow label="Operator" value={catalog.operator ?? "—"} />
+                  <InfoRow label="Country" value={catalog.country_operator ?? info?.country ?? "—"} />
+                  <InfoRow label="Purpose" value={catalog.purpose ?? info?.purpose ?? "—"} />
+                  {catalog.detailed_purpose && <InfoRow label="Detail" value={catalog.detailed_purpose} />}
+                  <InfoRow label="Users" value={catalog.users ?? "—"} />
+                  {catalog.launch_date && <InfoRow label="Launched" value={catalog.launch_date} />}
+                  {catalog.launch_mass_kg && <InfoRow label="Mass" value={`${catalog.launch_mass_kg.toLocaleString()} kg`} />}
+                  {catalog.expected_lifetime_yrs && <InfoRow label="Lifetime" value={`${catalog.expected_lifetime_yrs} yrs`} />}
+                  {catalog.contractor && <InfoRow label="Contractor" value={catalog.contractor} />}
+                  {catalog.launch_vehicle && <InfoRow label="Vehicle" value={catalog.launch_vehicle} />}
+                  {catalog.launch_site && <InfoRow label="Launch Site" value={catalog.launch_site} />}
                 </>
               )}
-              {!catalog && !catalogLoading && !info && <><span style={{ opacity: 0.4 }}>Purpose</span><span style={{ opacity: 0.35 }}>No UCS catalog data</span></>}
-              {!catalog && !catalogLoading && info && <><span style={{ opacity: 0.4 }}>Purpose</span><span>{info.purpose}</span><span style={{ opacity: 0.4 }}>Country</span><span>{info.country}</span></>}
+              {!catalog && !catalogLoading && !info && <InfoRow label="Purpose" value={<span style={{ color: "rgba(255,255,255,0.3)" }}>No UCS catalog data</span>} />}
+              {!catalog && !catalogLoading && info && (<><InfoRow label="Purpose" value={info.purpose} /><InfoRow label="Country" value={info.country} /></>)}
 
-              <span style={{ opacity: 0.4, marginTop: 6, borderTop: "1px solid rgba(255,255,255,0.08)", paddingTop: 6 }}>Altitude</span>
-              <span style={{ marginTop: 6, borderTop: "1px solid rgba(255,255,255,0.08)", paddingTop: 6 }}>{selectedSat.altKm.toFixed(1)} km</span>
-              <span style={{ opacity: 0.4 }}>Latitude</span><span>{selectedSat.lat.toFixed(4)}°</span>
-              <span style={{ opacity: 0.4 }}>Longitude</span><span>{selectedSat.lng.toFixed(4)}°</span>
+              {/* Divider */}
+              <div style={{ height: 1, background: "rgba(255,255,255,0.06)", margin: "2px 0" }} />
+
+              <InfoRow label="Altitude" value={`${selectedSat.altKm.toFixed(1)} km`} />
+              <InfoRow label="Latitude" value={`${selectedSat.lat.toFixed(4)}°`} />
+              <InfoRow label="Longitude" value={`${selectedSat.lng.toFixed(4)}°`} />
             </div>
           </div>
         );
@@ -321,43 +352,70 @@ export default function App() {
           <div style={{
             display: "flex", alignItems: "center", gap: 14,
             padding: "16px 28px",
-            background: "rgba(8,8,20,0.85)", backdropFilter: "blur(12px)",
-            borderRadius: 10, border: "1px solid rgba(79,195,247,0.3)",
+            background: "#12161ECC", backdropFilter: "blur(24px)",
+            borderRadius: 14, border: "1px solid rgba(91,156,246,0.3)",
           }}>
-            <div style={{ width: 12, height: 12, borderRadius: "50%", background: "#4fc3f7", animation: "pulse 1s ease-in-out infinite" }} />
-            <span style={{ fontSize: 14, fontFamily: "monospace", color: "rgba(255,255,255,0.8)" }}>
+            <div style={{ width: 12, height: 12, borderRadius: "50%", background: "#5B9CF6", animation: "pulse 1s ease-in-out infinite" }} />
+            <span style={{ fontSize: 14, fontFamily: FONT, color: "rgba(255,255,255,0.8)" }}>
               Recalculating...
             </span>
           </div>
         </div>
       )}
 
-      {/* 時間控制列 */}
+      {/* Timeline Bar */}
       <div style={{
         position: "absolute", bottom: 16, left: "50%", transform: "translateX(-50%)", zIndex: 10,
-        display: "flex", alignItems: "center", gap: 10,
-        padding: "8px 16px", background: "rgba(8,8,20,0.7)", backdropFilter: "blur(16px)",
-        borderRadius: 10, border: "1px solid rgba(255,255,255,0.08)",
+        display: "flex", alignItems: "center", gap: 10, height: 36,
+        padding: "0 16px 0 6px",
+        background: "#12161ECC", backdropFilter: "blur(24px)",
+        borderRadius: 18, border: "1px solid rgba(255,255,255,0.06)",
+        fontFamily: FONT,
       }}>
-        <button onClick={() => setPlaying((p) => !p)} style={{ background: "none", border: "1px solid rgba(255,255,255,0.2)", borderRadius: 4, color: "#fff", padding: "4px 10px", cursor: "pointer", fontFamily: "monospace", fontSize: 13 }}>
-          {playing ? "⏸" : "▶"}
+        {/* Play/Pause */}
+        <button onClick={() => setPlaying((p) => !p)} style={{
+          width: 28, height: 28, borderRadius: 14,
+          display: "flex", alignItems: "center", justifyContent: "center",
+          background: "rgba(91,156,246,0.12)", border: "none",
+          color: "#5B9CF6", cursor: "pointer", padding: 0,
+        }}>
+          {playing ? <Pause size={12} /> : <Play size={12} />}
         </button>
-        <div style={{ display: "flex", gap: 3 }}>
+
+        {/* Speed buttons */}
+        <div style={{ display: "flex", gap: 2 }}>
           {SPEED_OPTIONS.map((s) => (
             <button key={s} onClick={() => setSpeed(s)} style={{
-              background: speed === s ? "rgba(79,195,247,0.25)" : "rgba(255,255,255,0.03)",
-              border: `1px solid ${speed === s ? "rgba(79,195,247,0.5)" : "rgba(255,255,255,0.1)"}`,
-              borderRadius: 4, color: speed === s ? "#4fc3f7" : "rgba(255,255,255,0.5)",
-              padding: "3px 7px", cursor: "pointer", fontFamily: "monospace", fontSize: 10, minWidth: 32,
+              height: 24, minWidth: 30, padding: "0 6px",
+              borderRadius: 6, border: "none",
+              background: speed === s ? "rgba(91,156,246,0.12)" : "transparent",
+              color: speed === s ? "#5B9CF6" : "rgba(255,255,255,0.35)",
+              cursor: "pointer", fontFamily: FONT, fontSize: 11, fontWeight: 500,
             }}>
               {s}x
             </button>
           ))}
         </div>
-        <div style={{ fontFamily: "monospace", fontSize: 12, color: "rgba(255,255,255,0.7)", minWidth: 130, textAlign: "center" }}>
-          {displayTime}
+
+        {/* Slider track */}
+        <div style={{
+          width: 180, height: 3, borderRadius: 2,
+          background: "rgba(255,255,255,0.08)", overflow: "hidden", flexShrink: 0,
+        }}>
+          <div style={{ height: "100%", width: "50%", borderRadius: 2, background: "#5B9CF6" }} />
         </div>
-        <button onClick={() => { simTimeRef.current = Date.now() / 1000; }} style={{ background: "none", border: "1px solid rgba(255,255,255,0.15)", borderRadius: 4, color: "rgba(255,255,255,0.4)", padding: "3px 8px", cursor: "pointer", fontFamily: "monospace", fontSize: 10 }}>
+
+        {/* Time */}
+        <span style={{ fontSize: 12, fontWeight: 500, color: "rgba(255,255,255,0.7)", minWidth: 100, textAlign: "center" }}>
+          {displayTime}
+        </span>
+
+        {/* NOW */}
+        <button onClick={() => { simTimeRef.current = Date.now() / 1000; }} style={{
+          height: 24, padding: "0 10px", borderRadius: 6, border: "none",
+          background: "rgba(91,156,246,0.12)", color: "#5B9CF6",
+          cursor: "pointer", fontFamily: FONT, fontSize: 10, fontWeight: 600, letterSpacing: 0.5,
+        }}>
           NOW
         </button>
       </div>

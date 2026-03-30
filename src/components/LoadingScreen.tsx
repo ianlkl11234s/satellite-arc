@@ -28,7 +28,7 @@ export function LoadingScreen({ loading, tleCount, preparing }: LoadingScreenPro
       width: "100vw", height: "100vh",
       display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center",
       background: "radial-gradient(ellipse at center, #0a0e1a 0%, #020208 70%)",
-      color: "#fff", fontFamily: "monospace",
+      color: "#fff", fontFamily: "'Inter', sans-serif",
     }}>
       <style>{`
         @keyframes loadingPulse {
@@ -49,16 +49,16 @@ export function LoadingScreen({ loading, tleCount, preparing }: LoadingScreenPro
       {/* Pulsing dot */}
       <div style={{
         width: 14, height: 14, borderRadius: "50%",
-        background: "#4fc3f7",
-        boxShadow: "0 0 20px rgba(79,195,247,0.5), 0 0 40px rgba(79,195,247,0.2)",
+        background: "#5B9CF6",
+        boxShadow: "0 0 20px rgba(91,156,246,0.5), 0 0 40px rgba(91,156,246,0.2)",
         marginBottom: 28,
         animation: "loadingPulse 2s ease-in-out infinite",
       }} />
 
       {/* Title */}
       <h1 style={{
-        margin: 0, fontSize: 26, fontWeight: 700, letterSpacing: 4,
-        color: "#fff", textShadow: "0 2px 12px rgba(79,195,247,0.3)",
+        margin: 0, fontSize: 26, fontWeight: 700, letterSpacing: -0.3,
+        color: "#fff", textShadow: "0 2px 12px rgba(91,156,246,0.3)",
       }}>
         Satellite Tracker
       </h1>
@@ -81,7 +81,7 @@ export function LoadingScreen({ loading, tleCount, preparing }: LoadingScreenPro
           width: `${progress}%`,
           height: "100%",
           borderRadius: 2,
-          background: "linear-gradient(90deg, #4fc3f7, #81d4fa, #4fc3f7)",
+          background: "linear-gradient(90deg, #5B9CF6, #81b4fa, #5B9CF6)",
           backgroundSize: "200% 100%",
           animation: "shimmer 1.5s linear infinite",
           transition: "width 0.5s ease-out",
