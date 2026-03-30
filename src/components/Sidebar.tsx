@@ -15,9 +15,11 @@ import {
   ChevronDown,
   ChevronRight,
   Search,
+  Camera,
+  Info,
 } from "lucide-react";
 
-type PanelId = "settings" | "filters" | "colors" | "stats";
+type PanelId = "settings" | "filters" | "colors" | "stats" | "camera";
 
 export interface SidebarProps {
   tles: SatelliteTLE[];
@@ -46,6 +48,8 @@ export interface SidebarProps {
   onClearConstellations?: () => void;
   onSelectAllCountries?: () => void;
   onClearCountries?: () => void;
+  onInfoClick?: () => void;
+  onCameraPreset?: (preset: string) => void;
 }
 
 /* ── Design Tokens (from Pencil) ─────────────────────── */
@@ -659,6 +663,39 @@ function StatsPanel(props: SidebarProps) {
   );
 }
 
+/* ── Panel: Camera Presets ────────────────────────────── */
+
+const CAMERA_PRESETS = [
+  { id: "north_pole", label: "北極俯視", desc: "太陽同步軌道", icon: "🌐" },
+  { id: "south_pole", label: "南極俯視", desc: "極地軌道", icon: "🌐" },
+  { id: "equator", label: "赤道正視", desc: "GEO 衛星帶", icon: "🌍" },
+  { id: "overview", label: "全景遠距", desc: "整體分佈", icon: "🔭" },
+  { id: "closeup", label: "特寫近距", desc: "衛星細節", icon: "🔍" },
+];
+
+function CameraPanel(props: SidebarProps) {
+  return (
+    <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+      <SectionHeader>預設視角</SectionHeader>
+      {CAMERA_PRESETS.map((preset) => (
+        <button key={preset.id} onClick={() => props.onCameraPreset?.(preset.id)} style={{
+          display: "flex", alignItems: "center", gap: 10,
+          padding: "10px 12px", borderRadius: 8, cursor: "pointer",
+          background: T.BG_ELEVATED, border: `1px solid ${T.BORDER_SUBTLE}`,
+          color: T.FONT_SECONDARY, fontFamily: T.FONT, fontSize: 13, textAlign: "left",
+          width: "100%", transition: "all 0.15s",
+        }}>
+          <span style={{ fontSize: 16, flexShrink: 0 }}>{preset.icon}</span>
+          <div>
+            <div style={{ fontWeight: 500 }}>{preset.label}</div>
+            <div style={{ fontSize: 11, color: T.DIM, marginTop: 1 }}>{preset.desc}</div>
+          </div>
+        </button>
+      ))}
+    </div>
+  );
+}
+
 /* ── Panel Width Map ─────────────────────────────────── */
 
 const PANEL_WIDTH: Record<PanelId, number> = {
@@ -666,6 +703,7 @@ const PANEL_WIDTH: Record<PanelId, number> = {
   filters: 280,
   colors: 260,
   stats: 300,
+  camera: 240,
 };
 
 /* ── Main Panel Titles ───────────────────────────────── */
@@ -675,6 +713,7 @@ const PANELS: Array<{ id: PanelId; icon: (props: { size: number }) => ReactNode;
   { id: "filters", icon: ({ size }) => <Layers size={size} />, title: "篩選圖層" },
   { id: "colors", icon: ({ size }) => <Palette size={size} />, title: "配色主題" },
   { id: "stats", icon: (_props: { size: number }) => <IconBarChart />, title: "統計" },
+  { id: "camera", icon: ({ size }) => <Camera size={size} />, title: "視角" },
 ];
 
 /* ── Main Component ──────────────────────────────────── */
@@ -729,6 +768,14 @@ export function Sidebar(props: SidebarProps) {
             </div>
           </RailIcon>
         ))}
+
+        {/* 分隔線 */}
+        <div style={{ width: 32, height: 1, background: T.BORDER }} />
+
+        {/* Info 按鈕 */}
+        <RailIcon active={false} onClick={() => props.onInfoClick?.()} title="使用指南">
+          <Info size={20} />
+        </RailIcon>
       </div>
 
       {/* 浮動面板 */}
@@ -764,6 +811,7 @@ export function Sidebar(props: SidebarProps) {
             {activePanel === "filters" && <FiltersPanel {...props} />}
             {activePanel === "colors" && <ColorsPanel {...props} />}
             {activePanel === "stats" && <StatsPanel {...props} />}
+            {activePanel === "camera" && <CameraPanel {...props} />}
           </div>
         </div>
       )}
