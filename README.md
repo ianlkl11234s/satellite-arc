@@ -1,79 +1,104 @@
-# Satellite Arc
+# Satellite Tracker
 
 3D 即時衛星軌道追蹤與視覺化。純 Three.js 渲染，瀏覽器端 SGP4 即時計算。
 
-從 Supabase 載入 ~12,000 顆衛星的 TLE 軌道參數，用 [satellite.js](https://github.com/shashwatak/satellite-js) 在瀏覽器即時計算位置，以 Three.js 渲染在 3D 地球上。
+從 Supabase 載入 ~15,000 顆衛星（含太空碎片）的 TLE 軌道參數，用 [satellite.js](https://github.com/shashwatak/satellite-js) 在瀏覽器即時計算位置，以 Three.js 渲染在 3D 地球上。
 
 ## 功能
 
+### 核心渲染
 - **3D 地球** — NASA Black Marble 夜景貼圖 + Fresnel 大氣光暈
-- **~12,000 顆衛星** — 即時 SGP4 位置計算，分批更新保持 60fps
-- **10 種用途分類** — 星鏈 / 寬頻通訊 / 衛星電話 / 導航定位 / 地球觀測 / 科學太空站 / 軍事情報 / 技術展示 等
-- **動態尾巴** — 歷史位置緩衝區，零額外 SGP4 計算
-- **靜態軌道線** — 60 分鐘完整軌道弧線（可選）
-- **時間加速** — 1x ~ 600x，觀察衛星繞地球
-- **點擊查看** — UCS 衛星目錄 7,560 筆（營運商、用途、發射資訊）
-- **Icon Rail 側邊欄** — 四面板：設定 / 篩選圖層 / 配色主題 / 統計
-- **篩選圖層** — 依衛星系統、國家、用途三維篩選 + 搜尋
+- **~15,000 顆衛星** — 即時 SGP4 位置計算，分批更新保持 60fps
+- **11 種用途分類** — 星鏈 / 寬頻通訊 / 衛星電話 / 導航定位 / 地球觀測 / 科學太空站 / 軍事情報 / 技術展示 / 太空碎片 等
+- **動態尾巴** — 歷史位置緩衝區（20-50 步），零額外 SGP4 計算
+- **3D 軌道線** — 依真實高度映射（LEO 貼球面、GEO 遠離球面），清晰區分軌道層
+
+### 相機控制
+- **旋轉 / 縮放 / 平移** — 左鍵旋轉、滾輪縮放、右鍵平移
+- **5 個預設視角** — 北極俯視、南極俯視、赤道正視、全景遠距、特寫近距
+- **衛星追蹤模式** — 選中衛星後，相機平滑跟隨繞行地球
+
+### 側邊欄面板
+- **設定** — 用途分類開關（Solo 模式快速切換）、顯示參數、視覺參數
+- **篩選圖層** — 依衛星系統 / 國家 / 用途三維篩選 + 搜尋
 - **配色主題** — 4 組預設（Default / Warm / Cool / Mono）+ 自訂
-- **統計面板** — 圓餅圖、軌道分佈、主要營運商
-- **品牌 Loading** — 進度條 + 兩階段載入提示
+- **統計** — 衛星總數、軌道分佈、用途圓餅圖、主要營運商
+- **視角** — 5 個預設相機視角快切
+
+### 使用者體驗
+- **時間加速** — 10x ~ 600x，觀察衛星繞地球
+- **點擊查看** — UCS 衛星目錄 7,560 筆（營運商、用途、發射資訊）
+- **Info Modal** — 操作指南 / 資料來源 / 使用技巧 / 關於 / 個人，支援中英文
+- **品牌 Loading** — 軌道動畫 + 步驟清單 + 平滑淡出過渡
+- **Favicon** — 衛星軌道風格圖示
+- **手機版 Responsive** — 底部水平工具列、底部滑出面板、自適應 Timeline
 
 ## 技術架構
 
 ```
-Supabase (satellite_classified view)
+CelesTrak (36 群組, 含碎片)
+    ↓ data-collectors (每 2 小時)
+Supabase satellite_tle + satellite_catalog
+    ↓ satellite_classified view (11 category 自動分類)
     ↓ PostgREST API（分頁拉取，RLS 保護）
-瀏覽器載入 TLE + category + country（一次 ~4MB）
+瀏覽器載入 TLE + category + country
     ↓ satellite.js SGP4
-每幀分批計算衛星位置（12,000 ÷ 4 批 = 3,000/幀）
+每幀分批計算衛星位置（15,000 ÷ 4 批）
     ↓ Three.js
-InstancedMesh 光點 + 歷史緩衝區尾巴 + OrbitLines
+InstancedMesh 光點 + 歷史緩衝區尾巴 + 3D OrbitLines
 ```
 
 ### 效能策略
 
 | 策略 | 說明 |
 |------|------|
-| 分批 SGP4 | 每幀只算 1/4 衛星（~3,000 次），4 幀完成一輪 |
-| 歷史緩衝區 | 尾巴用位置快取，不做額外 SGP4 |
-| InstancedMesh | 3 層光點共 ~7 draw calls |
+| 分批 SGP4 | 每幀只算 1/4 衛星，4 幀完成一輪 |
+| 歷史緩衝區 | 尾巴用位置快取（最多 55 幀），不做額外 SGP4 |
+| InstancedMesh | 3 層光點（core + glow1 + glow2）共 ~7 draw calls |
 | 非同步篩選 | 篩選切換顯示 overlay，不凍結 UI |
+| 淡出過渡 | Loading → 主畫面平滑淡出，Three.js 在背景預載 |
 
 ### 座標系
 
 ```
 Earth radius = 1.0
-高度用 sqrt 縮放：LEO 400km → r≈1.15 / MEO 20,000km → r≈1.8 / GEO 36,000km → r≈2.2
+高度用 sqrt 縮放：LEO 400km → r≈1.13 / MEO 20,000km → r≈1.9 / GEO 36,000km → r≈2.2
 ```
 
 ## 資料來源
 
 | 來源 | 內容 | 更新頻率 |
 |------|------|---------|
-| **CelesTrak** → data-collectors → Supabase | TLE 軌道參數 (~12,000 顆) | 每 2 小時 |
+| **CelesTrak** (36 群組) → data-collectors → Supabase | TLE 軌道參數 (~15,000 顆，含太空碎片) | 每 2 小時 |
 | **UCS Satellite Database** → Supabase | 用途/營運商/發射資訊 (7,560 筆) | 靜態 |
 | **NASA Black Marble** | 地球夜景貼圖 | 靜態 |
+
+### CelesTrak 群組清單
+
+導航（GPS / Galileo / BeiDou / GLONASS）、通訊星座（Starlink / OneWeb / Iridium / Globalstar / Orbcomm / Qianfan）、氣象觀測（Weather / NOAA / GOES）、地球觀測（Resource / Planet / Spire）、同步軌道（GEO / SES）、太空站與科學（Stations / Science）、搜救與環境（SARSAT / Argos / TDRSS）、特殊軌道（Molniya / Military / Radar / Analyst）、小型衛星（CubeSat / Education / DMC）、社群追蹤（Amateur / SatNOGS / Visual）、**太空碎片**（Fengyun-1C / Cosmos-2251 / Iridium-33）
 
 ## 專案結構
 
 ```
 src/
 ├── globe/                       ← 3D 地球渲染核心
-│   ├── GlobeView.tsx            ← React 容器
-│   ├── GlobeScene.ts            ← 場景管理 + 分批 SGP4 迴圈
+│   ├── GlobeView.tsx            ← React 容器 + 相機預設/追蹤模式
+│   ├── GlobeScene.ts            ← 場景管理 + 分批 SGP4 + 追蹤邏輯
 │   ├── EarthMesh.ts             ← 地球球體 + Fresnel 大氣
-│   ├── SatelliteOrbs.ts         ← InstancedMesh 衛星光點
+│   ├── SatelliteOrbs.ts         ← InstancedMesh 衛星光點（呼吸動畫）
 │   ├── TrailLines.ts            ← 歷史緩衝區動態尾巴
-│   ├── OrbitLines.ts            ← 靜態軌道弧線
-│   └── coordinates.ts           ← 球面座標轉換
+│   ├── OrbitLines.ts            ← 3D 靜態軌道弧線（真實高度映射）
+│   └── coordinates.ts           ← 球面座標轉換 + altToRadius
 ├── components/
-│   ├── Sidebar.tsx              ← Icon Rail + 4 面板（設定/篩選/配色/統計）
-│   └── LoadingScreen.tsx        ← 品牌化載入畫面
+│   ├── Sidebar.tsx              ← Icon Rail + 6 面板（設定/篩選/配色/統計/視角/Info）
+│   ├── InfoModal.tsx            ← 操作指南/資料來源/使用技巧/關於/個人（中英文）
+│   └── LoadingScreen.tsx        ← 軌道動畫 + 步驟清單載入畫面
 ├── data/
-│   ├── satelliteLoader.ts       ← Supabase API + SGP4 + 分類定義
+│   ├── satelliteLoader.ts       ← Supabase API + SGP4 + 11 分類定義
 │   └── satelliteInfo.ts         ← 中文俗名對照表
-├── App.tsx                      ← 主程式（狀態管理 + 佈局）
+├── hooks/
+│   └── useIsMobile.ts           ← 響應式斷點偵測
+├── App.tsx                      ← 主程式（狀態管理 + 佈局 + 響應式）
 └── main.tsx
 ```
 
@@ -109,7 +134,7 @@ npm run build
 ### Zeabur / Docker
 
 ```bash
-# Dockerfile 已包含（Node 22 build + Nginx serve）
+# Dockerfile 已包含（Node 22 build + Nginx serve，port 8080）
 # 在平台設定環境變數：VITE_SUPABASE_URL, VITE_SUPABASE_ANON_KEY
 ```
 
@@ -123,39 +148,39 @@ npm run build
 
 | 操作 | 說明 |
 |------|------|
-| 滑鼠拖曳 | 旋轉地球 |
+| 左鍵拖曳 | 旋轉地球 |
+| 右鍵拖曳 | 平移地球 |
 | 滾輪 | 縮放 |
-| 點擊衛星 | 查看詳細資訊 |
-| 底部控制列 | 播放/暫停、時間加速、重設為現在 |
-| 左側 Icon Rail | 設定 / 篩選圖層 / 配色主題 / 統計 |
+| 點擊衛星 | 查看詳細資訊（NORAD ID、軌道、營運商等） |
+| 點擊分類數字 | Solo 模式（只看這個分類） |
+| 底部時間軸 | 播放/暫停、時間加速（10-600x）、重設為現在 |
+| 側邊欄 | 設定 / 篩選 / 配色 / 統計 / 視角 / Info |
+| 追蹤按鈕 | 選中衛星後出現，相機跟隨衛星繞行 |
 
 ## Roadmap
 
-### UI / 視覺
-- **對齊 pencil 設計稿** — 衛星資訊卡的藍色上邊框、右上角 Settings/Capture 按鈕、底部時間軸進度條（可拖曳）、整體間距與字級微調
-- **Cinema Mode** — 從 plan-art 搬入 keyframe 相機動畫系統、HQ 離線逐幀匯出、Vignette 暗角、錄影 overlay（時間/衛星數），可製作 YouTube 影片
-- **色彩主題系統** — 擴充更多 preset（如 Neon、Sunset），支援 localStorage 記憶選擇
+### 視覺增強
+- **Cinema Mode** — keyframe 相機動畫、HQ 離線逐幀匯出、Vignette 暗角
+- **Ground Track** — 衛星地面軌跡投影線
 
 ### 互動功能
-- **單顆衛星追蹤模式** — 點擊衛星後鎖定相機跟隨，自動旋轉地球追蹤該衛星移動，顯示地面軌跡投影線（ground track）和預測的下一圈軌道
-- **Viewshed 視域分析** — 從 plan-art 搬入，顯示選中衛星的地面可見範圍（3D 扇形 + 掃描線）
-- **衛星搜尋** — 在 header 或側邊欄加搜尋框，可直接搜衛星名稱/NORAD ID，搜到後自動定位
+- **Viewshed 視域分析** — 顯示選中衛星的地面可見範圍
+- **衛星搜尋** — 搜尋衛星名稱 / NORAD ID，自動定位
 
 ### 資料擴充
-- **Space-Track 整合** — 註冊 Space-Track.org 帳號後，可取得完整的軍事/機密衛星目錄（目前 CelesTrak 公開版缺少部分保密衛星），同時可取得碰撞預警資料（CDM）
-- **太空碎片** — 加入 NORAD 追蹤的 ~40,000 個碎片物體，可切換顯示（獨立圖層）
-- **歷史回放** — 從 S3 歸檔載入過去的 TLE，回放特定日期的衛星分佈
+- **Space-Track 整合** — 完整軍事/機密衛星 + 碰撞預警（CDM）
+- **歷史回放** — 從 S3 歸檔載入過去 TLE，回放特定日期
 
 ### 效能優化
-- **Web Worker** — 把 SGP4 計算（目前每幀 ~3,000 次）移到 Web Worker，完全不阻塞主線程的 UI 和 Three.js 渲染，消除所有殘餘的微卡頓
-- **GPU Compute（進階）** — 用 WebGPU compute shader 做 SGP4 計算，全部 12,000 顆衛星每幀 GPU 平行完成，適合未來衛星數量增長到 10 萬+
+- **Web Worker** — SGP4 計算移到 Worker，完全不阻塞主線程
+- **GPU Compute** — WebGPU compute shader 平行 SGP4，支援 10 萬+ 衛星
 
 ## 相關專案
 
 | 專案 | 角色 |
 |------|------|
-| `data-collectors` | 每 2 小時從 CelesTrak 收集 TLE → Supabase |
-| `gis-platform` | Supabase schema + UCS 衛星目錄 + classified view |
+| `data-collectors` | 每 2 小時從 CelesTrak 36 群組收集 TLE → Supabase（含碎片、GLONASS 修正、失敗重試） |
+| `gis-platform` | Supabase schema + UCS 衛星目錄 + satellite_classified view（11 category）+ pg_cron 自動分區 |
 | `plan-art` | 航班軌跡視覺化（同系列） |
 
 ## 授權
