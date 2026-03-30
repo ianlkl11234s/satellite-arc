@@ -652,7 +652,7 @@ const PANELS: Array<{ id: PanelId; icon: (props: { size: number }) => ReactNode;
   { id: "settings", icon: ({ size }) => <SlidersHorizontal size={size} />, title: "設定" },
   { id: "filters", icon: ({ size }) => <Layers size={size} />, title: "篩選圖層" },
   { id: "colors", icon: ({ size }) => <Palette size={size} />, title: "配色主題" },
-  { id: "stats", icon: ({ size }) => <IconBarChart />, title: "統計" },
+  { id: "stats", icon: (_props: { size: number }) => <IconBarChart />, title: "統計" },
 ];
 
 /* ── Main Component ──────────────────────────────────── */

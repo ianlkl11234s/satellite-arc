@@ -41,7 +41,7 @@ export function LoadingScreen({ loading, tleCount, preparing }: LoadingScreenPro
     return () => clearInterval(id);
   }, [preparing]);
 
-  const _ = tick; // keep reactive
+  void tick; // keep reactive
 
   const statusText = loading
     ? `正在載入衛星資料... ${tleCount.toLocaleString()} 筆`
