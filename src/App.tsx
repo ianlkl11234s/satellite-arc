@@ -56,16 +56,16 @@ export default function App() {
     for (const t of tles) s.add(t.country_operator ?? "Unknown");
     return s;
   }, [tles]);
-  const [visibleConstellations, setVisibleConstellations] = useState<Set<string>>(new Set<string>());
-  const [visibleCountries, setVisibleCountries] = useState<Set<string>>(new Set<string>());
+  const [visibleConstellations, setVisibleConstellations] = useState<Set<string> | null>(null);
+  const [visibleCountries, setVisibleCountries] = useState<Set<string> | null>(null);
 
   // 初始化篩選（載入後設為全選）
   useEffect(() => {
-    if (tles.length > 0 && visibleConstellations.size === 0) {
+    if (tles.length > 0 && visibleConstellations === null) {
       setVisibleConstellations(new Set(allConstellations));
       setVisibleCountries(new Set(allCountries));
     }
-  }, [tles.length, allConstellations, allCountries, visibleConstellations.size]);
+  }, [tles.length, allConstellations, allCountries, visibleConstellations]);
 
   // 相機
   const [cameraInfo, setCameraInfo] = useState<CameraInfo>({ distance: 6.2, azimuth: -1, polar: 36 });
@@ -96,8 +96,8 @@ export default function App() {
   const filteredTles = useMemo(() => {
     return tles.filter((tle) => {
       if (!visibleCategories.has(tle.category)) return false;
-      if (visibleConstellations.size > 0 && !visibleConstellations.has(tle.constellation || "Other")) return false;
-      if (visibleCountries.size > 0 && !visibleCountries.has(tle.country_operator ?? "Unknown")) return false;
+      if (visibleConstellations !== null && !visibleConstellations.has(tle.constellation || "Other")) return false;
+      if (visibleCountries !== null && !visibleCountries.has(tle.country_operator ?? "Unknown")) return false;
       return true;
     });
   }, [tles, visibleCategories, visibleConstellations, visibleCountries]);
@@ -161,11 +161,11 @@ export default function App() {
   }, []);
 
   const toggleConstellation = useCallback((name: string) => {
-    setVisibleConstellations((prev) => { const n = new Set(prev); if (n.has(name)) n.delete(name); else n.add(name); return n; });
+    setVisibleConstellations((prev) => { const n = new Set(prev ?? []); if (n.has(name)) n.delete(name); else n.add(name); return n; });
   }, []);
 
   const toggleCountry = useCallback((country: string) => {
-    setVisibleCountries((prev) => { const n = new Set(prev); if (n.has(country)) n.delete(country); else n.add(country); return n; });
+    setVisibleCountries((prev) => { const n = new Set(prev ?? []); if (n.has(country)) n.delete(country); else n.add(country); return n; });
   }, []);
 
   const handlePresetApplied = useCallback(() => setCameraPreset(null), []);
@@ -235,8 +235,8 @@ export default function App() {
         orbOpacity={orbOpacity}
         trailLength={trailLength}
         colors={colors}
-        visibleConstellations={visibleConstellations}
-        visibleCountries={visibleCountries}
+        visibleConstellations={visibleConstellations ?? new Set()}
+        visibleCountries={visibleCountries ?? new Set()}
         onSatelliteClick={handleSatelliteClick}
         selectedId={selectedSat?.id ?? null}
         onCameraChange={setCameraInfo}
@@ -264,9 +264,9 @@ export default function App() {
         onOrbOpacityChange={setOrbOpacity}
         colors={colors}
         onColorChange={handleColorChange}
-        visibleConstellations={visibleConstellations}
+        visibleConstellations={visibleConstellations ?? new Set()}
         onToggleConstellation={toggleConstellation}
-        visibleCountries={visibleCountries}
+        visibleCountries={visibleCountries ?? new Set()}
         onToggleCountry={toggleCountry}
         onSelectAllConstellations={() => setVisibleConstellations(new Set(allConstellations))}
         onClearConstellations={() => setVisibleConstellations(new Set())}
