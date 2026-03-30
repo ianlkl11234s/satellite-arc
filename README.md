@@ -129,6 +129,27 @@ npm run build
 | 底部控制列 | 播放/暫停、時間加速、重設為現在 |
 | 左側 Icon Rail | 設定 / 篩選圖層 / 配色主題 / 統計 |
 
+## Roadmap
+
+### UI / 視覺
+- **對齊 pencil 設計稿** — 衛星資訊卡的藍色上邊框、右上角 Settings/Capture 按鈕、底部時間軸進度條（可拖曳）、整體間距與字級微調
+- **Cinema Mode** — 從 plan-art 搬入 keyframe 相機動畫系統、HQ 離線逐幀匯出、Vignette 暗角、錄影 overlay（時間/衛星數），可製作 YouTube 影片
+- **色彩主題系統** — 擴充更多 preset（如 Neon、Sunset），支援 localStorage 記憶選擇
+
+### 互動功能
+- **單顆衛星追蹤模式** — 點擊衛星後鎖定相機跟隨，自動旋轉地球追蹤該衛星移動，顯示地面軌跡投影線（ground track）和預測的下一圈軌道
+- **Viewshed 視域分析** — 從 plan-art 搬入，顯示選中衛星的地面可見範圍（3D 扇形 + 掃描線）
+- **衛星搜尋** — 在 header 或側邊欄加搜尋框，可直接搜衛星名稱/NORAD ID，搜到後自動定位
+
+### 資料擴充
+- **Space-Track 整合** — 註冊 Space-Track.org 帳號後，可取得完整的軍事/機密衛星目錄（目前 CelesTrak 公開版缺少部分保密衛星），同時可取得碰撞預警資料（CDM）
+- **太空碎片** — 加入 NORAD 追蹤的 ~40,000 個碎片物體，可切換顯示（獨立圖層）
+- **歷史回放** — 從 S3 歸檔載入過去的 TLE，回放特定日期的衛星分佈
+
+### 效能優化
+- **Web Worker** — 把 SGP4 計算（目前每幀 ~3,000 次）移到 Web Worker，完全不阻塞主線程的 UI 和 Three.js 渲染，消除所有殘餘的微卡頓
+- **GPU Compute（進階）** — 用 WebGPU compute shader 做 SGP4 計算，全部 12,000 顆衛星每幀 GPU 平行完成，適合未來衛星數量增長到 10 萬+
+
 ## 相關專案
 
 | 專案 | 角色 |
