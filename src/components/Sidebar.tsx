@@ -730,7 +730,7 @@ export function Sidebar(props: SidebarProps) {
   };
 
   const panelContent = activePanel && (
-    <div className="sidebar-scrollbar" style={{
+    <div style={{
       position: "absolute",
       ...(mobile
         ? { bottom: 56, left: 8, right: 8, maxHeight: "60vh" }
@@ -739,12 +739,14 @@ export function Sidebar(props: SidebarProps) {
       background: T.BG_PANEL, backdropFilter: BLUR_PANEL,
       borderRadius: 14, border: `1px solid ${T.BORDER_SUBTLE}`,
       fontFamily: T.FONT, fontSize: 13, color: T.FONT_PRIMARY,
-      overflowY: "auto",
+      display: "flex", flexDirection: "column", overflow: "hidden",
       animation: mobile ? "mobileSlideUp 0.2s ease-out" : "sidebarSlideIn 0.2s ease-out",
     }}>
+      {/* 固定 Header */}
       <div style={{
         display: "flex", justifyContent: "space-between", alignItems: "center",
-        padding: "16px 20px",
+        padding: "16px 20px", flexShrink: 0,
+        borderBottom: `1px solid ${T.BORDER_SUBTLE}`,
       }}>
         <span style={{ fontSize: 15, fontWeight: 600, fontFamily: T.FONT }}>{PANELS.find((p) => p.id === activePanel)?.title}</span>
         <button onClick={() => setActivePanel(null)} style={{
@@ -755,7 +757,8 @@ export function Sidebar(props: SidebarProps) {
           <X size={12} />
         </button>
       </div>
-      <div style={{ padding: "0 20px 16px" }}>
+      {/* 可捲動內容 */}
+      <div className="sidebar-scrollbar" style={{ padding: "12px 20px 16px", overflowY: "auto", flex: 1 }}>
         {activePanel === "settings" && <SettingsPanel {...props} />}
         {activePanel === "filters" && <FiltersPanel {...props} />}
         {activePanel === "colors" && <ColorsPanel {...props} />}
