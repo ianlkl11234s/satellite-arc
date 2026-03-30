@@ -44,6 +44,7 @@ export const CATEGORIES: Record<string, { en: string; zh: string; color: string 
   science:    { en: "Science", zh: "科學/太空站", color: "#fff176" },
   military:   { en: "Military", zh: "軍事/情報", color: "#ef5350" },
   tech_demo:  { en: "Tech Demo", zh: "技術展示", color: "#b0bec5" },
+  debris:     { en: "Debris", zh: "太空碎片", color: "#616161" },
   other:      { en: "Other", zh: "其他", color: "#78909c" },
 };
 

@@ -425,9 +425,9 @@ function FiltersPanel(props: SidebarProps) {
 
 const COLOR_PRESETS: Record<string, { name: string; colors: Record<string, string> }> = {
   default: { name: "Default", colors: Object.fromEntries(Object.entries(CATEGORIES).map(([k, v]) => [k, v.color])) },
-  warm: { name: "Warm", colors: { starlink: "#ffcc80", broadband: "#ff8a65", phone: "#ffab40", geo_comms: "#ffd54f", navigation: "#fff176", earth_obs: "#aed581", science: "#e6ee9c", military: "#ef9a9a", tech_demo: "#bcaaa4", other: "#a1887f" } },
-  cool: { name: "Cool", colors: { starlink: "#80deea", broadband: "#4dd0e1", phone: "#4fc3f7", geo_comms: "#64b5f6", navigation: "#7986cb", earth_obs: "#9fa8da", science: "#b39ddb", military: "#ce93d8", tech_demo: "#90a4ae", other: "#78909c" } },
-  mono: { name: "Mono", colors: { starlink: "#f5f5f5", broadband: "#e0e0e0", phone: "#bdbdbd", geo_comms: "#9e9e9e", navigation: "#eeeeee", earth_obs: "#b0bec5", science: "#cfd8dc", military: "#757575", tech_demo: "#616161", other: "#424242" } },
+  warm: { name: "Warm", colors: { starlink: "#ffcc80", broadband: "#ff8a65", phone: "#ffab40", geo_comms: "#ffd54f", navigation: "#fff176", earth_obs: "#aed581", science: "#e6ee9c", military: "#ef9a9a", tech_demo: "#bcaaa4", debris: "#8d6e63", other: "#a1887f" } },
+  cool: { name: "Cool", colors: { starlink: "#80deea", broadband: "#4dd0e1", phone: "#4fc3f7", geo_comms: "#64b5f6", navigation: "#7986cb", earth_obs: "#9fa8da", science: "#b39ddb", military: "#ce93d8", tech_demo: "#90a4ae", debris: "#546e7a", other: "#78909c" } },
+  mono: { name: "Mono", colors: { starlink: "#f5f5f5", broadband: "#e0e0e0", phone: "#bdbdbd", geo_comms: "#9e9e9e", navigation: "#eeeeee", earth_obs: "#b0bec5", science: "#cfd8dc", military: "#757575", tech_demo: "#616161", debris: "#424242", other: "#424242" } },
 };
 
 function ColorsPanel(props: SidebarProps) {

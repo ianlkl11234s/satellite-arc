@@ -42,7 +42,7 @@ export default function App() {
   const [orbScale, setOrbScale] = useState(0.8);
   const [orbOpacity, setOrbOpacity] = useState(0.9);
   const [trailLength, setTrailLength] = useState(30);
-  const [visibleCategories, setVisibleCategories] = useState<Set<string>>(new Set(ALL_CATEGORIES.filter(c => c !== "starlink")));
+  const [visibleCategories, setVisibleCategories] = useState<Set<string>>(new Set(ALL_CATEGORIES.filter(c => c !== "starlink" && c !== "debris")));
   const [colors, setColors] = useState<Record<string, string>>(DEFAULT_COLORS);
 
   // 進階篩選
