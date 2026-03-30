@@ -52,7 +52,7 @@ export class GlobeScene {
   // 歷史位置環形緩衝區（用於動態尾巴，不需額外 SGP4）
   // key: satellite index → 最近 N 幀的 [x,y,z] 位置
   private historyBuffer = new Map<number, Array<[number, number, number]>>();
-  private historyMaxLen = 20; // 最多存幾幀歷史
+  private historyMaxLen = 55; // 最多存幾幀歷史（支援尾巴最長 50 步）
   private historyWriteCounter = 0;
   private historyWriteInterval = 3; // 每 N 幀記錄一次位置
 
@@ -93,7 +93,7 @@ export class GlobeScene {
 
     const aspect = container.clientWidth / container.clientHeight;
     this.camera = new THREE.PerspectiveCamera(45, aspect, 0.01, 100);
-    this.camera.position.set(0, 0.5, 3.5);
+    this.camera.position.set(-0.09, 3.64, 5.01);
 
     this.renderer = new THREE.WebGLRenderer({ antialias: true });
     this.renderer.setSize(container.clientWidth, container.clientHeight);

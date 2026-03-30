@@ -208,7 +208,7 @@ function SettingsPanel(props: SidebarProps) {
       {/* 視覺參數 */}
       <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
         <SectionHeader>視覺參數</SectionHeader>
-        <SliderRow label="尾巴長度" value={props.trailLength} min={3} max={20} step={1} format={(v) => `${v} 步`} onChange={props.onTrailLengthChange} />
+        <SliderRow label="尾巴長度" value={props.trailLength} min={20} max={50} step={1} format={(v) => `${v} 步`} onChange={props.onTrailLengthChange} />
         <SliderRow label="衛星大小" value={props.orbScale} min={0.3} max={3} step={0.1} format={(v) => `${v.toFixed(1)}x`} onChange={props.onOrbScaleChange} />
         <SliderRow label="衛星不透明度" value={props.orbOpacity} min={0.1} max={1} step={0.05} format={(v) => v.toFixed(2)} onChange={props.onOrbOpacityChange} />
         <SliderRow label="軌跡不透明度" value={props.orbitOpacity} min={0.05} max={0.8} step={0.05} format={(v) => v.toFixed(2)} onChange={props.onOrbitOpacityChange} />
@@ -658,7 +658,8 @@ const PANELS: Array<{ id: PanelId; icon: (props: { size: number }) => ReactNode;
 /* ── Main Component ──────────────────────────────────── */
 
 export function Sidebar(props: SidebarProps) {
-  const [activePanel, setActivePanel] = useState<PanelId | null>("settings");
+  const [activePanel, setActivePanel] = useState<PanelId | null>(null);
+  const [hasOpenedOnce, setHasOpenedOnce] = useState(false);
 
   return (
     <>
@@ -692,8 +693,18 @@ export function Sidebar(props: SidebarProps) {
 
         {/* 導航圖示 */}
         {PANELS.map(({ id, icon: Icon, title }) => (
-          <RailIcon key={id} active={activePanel === id} onClick={() => setActivePanel((p) => p === id ? null : id)} title={title}>
-            <Icon size={20} />
+          <RailIcon key={id} active={activePanel === id} onClick={() => { setActivePanel((p) => p === id ? null : id); if (!hasOpenedOnce) setHasOpenedOnce(true); }} title={title}>
+            <div style={{ position: "relative", display: "flex", alignItems: "center", justifyContent: "center" }}>
+              <Icon size={20} />
+              {id === "settings" && !hasOpenedOnce && (
+                <div style={{
+                  position: "absolute", top: -2, right: -2,
+                  width: 6, height: 6, borderRadius: "50%",
+                  background: "#EF4444",
+                  boxShadow: "0 0 4px rgba(239,68,68,0.6)",
+                }} />
+              )}
+            </div>
           </RailIcon>
         ))}
       </div>

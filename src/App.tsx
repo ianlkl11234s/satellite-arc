@@ -39,10 +39,10 @@ export default function App() {
   const [showTrails, setShowTrails] = useState(true);
   const [showOrbits, setShowOrbits] = useState(false);
   const [orbitOpacity, setOrbitOpacity] = useState(0.35);
-  const [orbScale, setOrbScale] = useState(1.0);
+  const [orbScale, setOrbScale] = useState(0.8);
   const [orbOpacity, setOrbOpacity] = useState(0.9);
-  const [trailLength, setTrailLength] = useState(8);
-  const [visibleCategories, setVisibleCategories] = useState<Set<string>>(new Set(ALL_CATEGORIES));
+  const [trailLength, setTrailLength] = useState(30);
+  const [visibleCategories, setVisibleCategories] = useState<Set<string>>(new Set(ALL_CATEGORIES.filter(c => c !== "starlink")));
   const [colors, setColors] = useState<Record<string, string>>(DEFAULT_COLORS);
 
   // 進階篩選
@@ -68,7 +68,7 @@ export default function App() {
   }, [tles.length, allConstellations, allCountries, visibleConstellations.size]);
 
   // 相機
-  const [cameraInfo, setCameraInfo] = useState<CameraInfo>({ distance: 3.5, azimuth: 0, polar: 8 });
+  const [cameraInfo, setCameraInfo] = useState<CameraInfo>({ distance: 6.2, azimuth: -1, polar: 36 });
 
   // 選中衛星
   const [selectedSat, setSelectedSat] = useState<SatellitePosition | null>(null);
@@ -189,9 +189,18 @@ export default function App() {
 
   const visibleCount = filteredTles.length;
 
-  if (!ready && !error) {
-    return <LoadingScreen loading={loading} tleCount={tles.length} preparing={!loading && tles.length > 0} />;
-  }
+  // 淡出過渡：ready 後延遲移除 loading overlay
+  const [showLoading, setShowLoading] = useState(true);
+  const [loadingFading, setLoadingFading] = useState(false);
+
+  useEffect(() => {
+    if (ready && !loadingFading) {
+      // 開始淡出
+      setLoadingFading(true);
+      const timer = setTimeout(() => setShowLoading(false), 600);
+      return () => clearTimeout(timer);
+    }
+  }, [ready, loadingFading]);
 
   if (error) {
     return (
@@ -203,6 +212,17 @@ export default function App() {
 
   return (
     <div style={{ position: "relative", width: "100vw", height: "100vh" }}>
+      {/* Loading overlay — 蓋在主畫面上方，淡出過渡 */}
+      {showLoading && (
+        <div style={{
+          position: "absolute", inset: 0, zIndex: 100,
+          opacity: loadingFading ? 0 : 1,
+          transition: "opacity 0.5s ease-out",
+          pointerEvents: loadingFading ? "none" : "auto",
+        }}>
+          <LoadingScreen loading={loading} tleCount={tles.length} preparing={!loading && tles.length > 0} />
+        </div>
+      )}
       <GlobeView
         tles={tles}
         orbits={orbits}
