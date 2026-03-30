@@ -23,6 +23,7 @@ export interface SidebarProps {
   tles: SatelliteTLE[];
   visibleCategories: Set<string>;
   onToggleCategory: (cat: string) => void;
+  onSoloCategory: (cat: string) => void;
   showTrails: boolean;
   onShowTrailsChange: (v: boolean) => void;
   showOrbits: boolean;
@@ -170,18 +171,33 @@ function SettingsPanel(props: SidebarProps) {
             const active = props.visibleCategories.has(cat);
             const count = catStats[cat] ?? 0;
             if (count === 0) return null;
+            const isSolo = active && props.visibleCategories.size === 1;
             return (
-              <div key={cat} onClick={() => props.onToggleCategory(cat)} style={{
-                display: "flex", alignItems: "center", gap: 10, cursor: "pointer",
+              <div key={cat} style={{
+                display: "flex", alignItems: "center", gap: 10,
                 padding: "5px 0", fontFamily: T.FONT,
               }}>
-                <div style={{
-                  width: 8, height: 8, borderRadius: "50%",
-                  background: props.colors[cat] ?? info.color,
-                  opacity: active ? 1 : 0.2, flexShrink: 0,
-                }} />
-                <span style={{ flex: 1, fontSize: 13, color: T.FONT_SECONDARY, opacity: active ? 1 : 0.35 }}>{info.zh}</span>
-                <span style={{ fontSize: 12, color: T.DIM, opacity: active ? 0.6 : 0.2 }}>{count.toLocaleString()}</span>
+                <div onClick={() => props.onToggleCategory(cat)} style={{
+                  display: "flex", alignItems: "center", gap: 10, flex: 1, cursor: "pointer",
+                }}>
+                  <div style={{
+                    width: 8, height: 8, borderRadius: "50%",
+                    background: props.colors[cat] ?? info.color,
+                    opacity: active ? 1 : 0.2, flexShrink: 0,
+                  }} />
+                  <span style={{ flex: 1, fontSize: 13, color: T.FONT_SECONDARY, opacity: active ? 1 : 0.35 }}>{info.zh}</span>
+                </div>
+                <span
+                  title={isSolo ? "顯示全部" : "只看這個"}
+                  onClick={(e) => { e.stopPropagation(); props.onSoloCategory(cat); }}
+                  style={{
+                    fontSize: 11, padding: "2px 6px", borderRadius: 4, cursor: "pointer",
+                    background: isSolo ? T.ACCENT_DIM : "transparent",
+                    color: isSolo ? T.ACCENT : T.DIM,
+                    opacity: active ? 0.8 : 0.2,
+                    transition: "all 0.15s",
+                  }}
+                >{isSolo ? "ALL" : count.toLocaleString()}</span>
               </div>
             );
           })}

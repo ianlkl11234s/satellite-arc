@@ -160,6 +160,17 @@ export default function App() {
     setVisibleCategories((prev) => { const n = new Set(prev); if (n.has(cat)) n.delete(cat); else n.add(cat); return n; });
   }, []);
 
+  const soloCategory = useCallback((cat: string) => {
+    setVisibleCategories((prev) => {
+      // 如果已經是 solo 這個 category，恢復全部（不含 starlink 和 debris）
+      if (prev.size === 1 && prev.has(cat)) {
+        return new Set(ALL_CATEGORIES.filter(c => c !== "starlink" && c !== "debris"));
+      }
+      // 否則 solo：只顯示這個 category
+      return new Set([cat]);
+    });
+  }, []);
+
   const toggleConstellation = useCallback((name: string) => {
     setVisibleConstellations((prev) => { const n = new Set(prev ?? []); if (n.has(name)) n.delete(name); else n.add(name); return n; });
   }, []);
@@ -250,6 +261,7 @@ export default function App() {
         tles={tles}
         visibleCategories={visibleCategories}
         onToggleCategory={toggleCategory}
+        onSoloCategory={soloCategory}
         showTrails={showTrails}
         onShowTrailsChange={setShowTrails}
         showOrbits={showOrbits}
