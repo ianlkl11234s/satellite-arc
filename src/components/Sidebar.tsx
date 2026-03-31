@@ -59,7 +59,7 @@ export interface SidebarProps {
   onCameraPreset?: (preset: string) => void;
   isMobile?: boolean;
   launches?: Launch[];
-  onFlyToLaunch?: (lat: number, lng: number) => void;
+  onFlyToLaunch?: (lat: number, lng: number, launch?: Launch) => void;
 }
 
 /* ── Design Tokens (from Pencil) ─────────────────────── */
@@ -788,7 +788,7 @@ export function Sidebar(props: SidebarProps) {
         {activePanel === "colors" && <ColorsPanel {...props} />}
         {activePanel === "stats" && <StatsPanel {...props} />}
         {activePanel === "camera" && <CameraPanel {...props} />}
-        {activePanel === "launches" && <LaunchPanel launches={props.launches ?? []} onFlyTo={props.onFlyToLaunch} />}
+        {activePanel === "launches" && <LaunchPanel launches={props.launches ?? []} onFlyTo={(lat, lng, launch) => props.onFlyToLaunch?.(lat, lng, launch)} />}
       </div>
     </div>
   );

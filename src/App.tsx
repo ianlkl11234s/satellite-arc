@@ -47,6 +47,8 @@ export default function App() {
   // 發射資料
   const [launches, setLaunches] = useState<Launch[]>([]);
   const [launchPads, setLaunchPads] = useState<LaunchPad[]>([]);
+  const [selectedLaunch, setSelectedLaunch] = useState<Launch | null>(null);
+  const [flyToTarget, setFlyToTarget] = useState<{ lat: number; lng: number } | null>(null);
   const [orbitOpacity, setOrbitOpacity] = useState(0.35);
   const [orbScale, setOrbScale] = useState(0.8);
   const [orbOpacity, setOrbOpacity] = useState(0.9);
@@ -276,6 +278,8 @@ export default function App() {
         launchPads={launchPads}
         launches={launches}
         showLaunchPads={showLaunchPads}
+        flyToTarget={flyToTarget}
+        onFlyToDone={useCallback(() => setFlyToTarget(null), [])}
       />
 
       {/* Icon Rail Sidebar */}
@@ -314,9 +318,13 @@ export default function App() {
         onShowLaunchPadsChange={setShowLaunchPads}
         isMobile={isMobile}
         launches={launches}
-        onFlyToLaunch={(lat, lng) => {
-          // TODO: 飛到指定座標（未來可加入相機動畫）
-          console.log(`Fly to launch pad: ${lat}, ${lng}`);
+        onFlyToLaunch={(lat, lng, launch) => {
+          setFlyToTarget({ lat, lng });
+          setSelectedLaunch(launch ?? null);
+          // 取消衛星選取
+          setSelectedSat(null);
+          setCatalog(null);
+          setFollowMode(false);
         }}
       />
 
@@ -443,6 +451,82 @@ export default function App() {
           </div>
         );
       })()}
+
+      {/* 選中發射任務資訊卡 */}
+      {selectedLaunch && (
+        <div style={{
+          position: "absolute", zIndex: 10,
+          ...(isMobile
+            ? { bottom: 58, left: 8, right: 8, maxHeight: "50vh", width: "auto" }
+            : { top: 60, right: 16, width: 320, maxHeight: "calc(100vh - 140px)" }),
+          overflowY: "auto",
+          background: "#12161ECC", backdropFilter: "blur(24px)",
+          borderRadius: 14, border: "1px solid rgba(255,255,255,0.06)",
+          padding: "16px 20px", fontFamily: FONT,
+          display: "flex", flexDirection: "column", gap: 4,
+        }}>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 4 }}>
+            <span style={{ fontSize: 14, fontWeight: 700, color: "#fff" }}>
+              {selectedLaunch.rocket_full_name || selectedLaunch.rocket_name}
+            </span>
+            <button onClick={() => setSelectedLaunch(null)} style={{
+              width: 22, height: 22, display: "flex", alignItems: "center", justifyContent: "center",
+              background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.06)",
+              borderRadius: 6, color: "#6B7280", cursor: "pointer", padding: 0,
+            }}>
+              <X size={11} />
+            </button>
+          </div>
+
+          {selectedLaunch.mission_name && (
+            <div style={{ fontSize: 13, color: "rgba(255,255,255,0.85)", marginBottom: 2 }}>
+              {selectedLaunch.mission_name}
+            </div>
+          )}
+
+          {selectedLaunch.mission_description && (
+            <div style={{ fontSize: 11, color: "rgba(255,255,255,0.5)", marginBottom: 6, lineHeight: 1.5 }}>
+              {selectedLaunch.mission_description}
+            </div>
+          )}
+
+          <div style={{ height: 1, background: "rgba(255,255,255,0.06)", margin: "2px 0" }} />
+
+          <InfoRow label="Status" value={
+            <span style={{ color: selectedLaunch.status === "Go" ? "#4caf50" : selectedLaunch.status === "Success" ? "#4caf50" : "#ff9800" }}>
+              {selectedLaunch.status_name || selectedLaunch.status}
+            </span>
+          } />
+          {selectedLaunch.net && (
+            <InfoRow label="NET" value={new Date(selectedLaunch.net).toLocaleString("zh-TW", {
+              timeZone: "Asia/Taipei", year: "numeric", month: "2-digit", day: "2-digit",
+              hour: "2-digit", minute: "2-digit", hour12: false,
+            })} />
+          )}
+          <InfoRow label="Rocket" value={selectedLaunch.rocket_full_name || selectedLaunch.rocket_name} />
+          {selectedLaunch.agency_name && <InfoRow label="Agency" value={selectedLaunch.agency_name} />}
+          {selectedLaunch.orbit_name && <InfoRow label="Orbit" value={`${selectedLaunch.orbit_name}${selectedLaunch.orbit_abbrev ? ` (${selectedLaunch.orbit_abbrev})` : ""}`} />}
+          {selectedLaunch.mission_type && <InfoRow label="Type" value={selectedLaunch.mission_type} />}
+          {selectedLaunch.program_names && <InfoRow label="Program" value={selectedLaunch.program_names} />}
+
+          <div style={{ height: 1, background: "rgba(255,255,255,0.06)", margin: "2px 0" }} />
+
+          <InfoRow label="Pad" value={selectedLaunch.pad_name} />
+          <InfoRow label="Location" value={selectedLaunch.location_name} />
+          {selectedLaunch.probability != null && <InfoRow label="Probability" value={`${selectedLaunch.probability}%`} />}
+          {selectedLaunch.weather_concerns && <InfoRow label="Weather" value={selectedLaunch.weather_concerns} />}
+
+          {selectedLaunch.webcast_live && (
+            <div style={{ marginTop: 4, fontSize: 11, color: "#f44336", fontWeight: 700 }}>● LIVE WEBCAST</div>
+          )}
+
+          {selectedLaunch.image_url && (
+            <img src={selectedLaunch.image_url} alt="" style={{
+              width: "100%", borderRadius: 8, marginTop: 8, opacity: 0.85,
+            }} />
+          )}
+        </div>
+      )}
 
       {/* 重新計算 overlay */}
       {recalculating && (

@@ -63,7 +63,7 @@ function StatusBadge({ status }: { status: string }) {
 
 interface LaunchPanelProps {
   launches: Launch[];
-  onFlyTo?: (lat: number, lng: number) => void;
+  onFlyTo?: (lat: number, lng: number, launch?: Launch) => void;
 }
 
 export function LaunchPanel({ launches, onFlyTo }: LaunchPanelProps) {
@@ -97,7 +97,7 @@ export function LaunchPanel({ launches, onFlyTo }: LaunchPanelProps) {
             key={l.id}
             onClick={() => {
               if (l.pad_latitude && l.pad_longitude && onFlyTo) {
-                onFlyTo(l.pad_latitude, l.pad_longitude);
+                onFlyTo(l.pad_latitude, l.pad_longitude, l);
               }
             }}
             style={{

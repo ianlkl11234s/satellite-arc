@@ -281,6 +281,43 @@ export class GlobeScene {
 
   /* ── Camera presets ──────────────────────────────────── */
 
+  /** 相機飛到指定經緯度（地表上方近距離觀看） */
+  flyToLatLng(lat: number, lng: number, distance = 2.2) {
+    this.followMode = false;
+    const latRad = lat * Math.PI / 180;
+    const lngRad = lng * Math.PI / 180;
+    // 計算球面上方的相機位置
+    const x = distance * Math.cos(latRad) * Math.cos(lngRad);
+    const y = distance * Math.sin(latRad);
+    const z = -distance * Math.cos(latRad) * Math.sin(lngRad);
+    // 平滑動畫
+    this._animateCamera(x, y, z);
+  }
+
+  private _cameraAnimId = 0;
+  private _animateCamera(tx: number, ty: number, tz: number) {
+    cancelAnimationFrame(this._cameraAnimId);
+    const start = { x: this.camera.position.x, y: this.camera.position.y, z: this.camera.position.z };
+    const duration = 1200; // ms
+    const startTime = performance.now();
+
+    const step = () => {
+      const elapsed = performance.now() - startTime;
+      const t = Math.min(1, elapsed / duration);
+      // ease-out cubic
+      const ease = 1 - Math.pow(1 - t, 3);
+      this.camera.position.set(
+        start.x + (tx - start.x) * ease,
+        start.y + (ty - start.y) * ease,
+        start.z + (tz - start.z) * ease,
+      );
+      this.controls.target.set(0, 0, 0);
+      this.controls.update();
+      if (t < 1) this._cameraAnimId = requestAnimationFrame(step);
+    };
+    step();
+  }
+
   setCameraPreset(preset: "north_pole" | "south_pole" | "equator" | "overview" | "closeup") {
     // 停止追蹤模式
     this.followMode = false;

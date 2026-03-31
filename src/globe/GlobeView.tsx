@@ -39,6 +39,8 @@ interface GlobeViewProps {
   launchPads?: LaunchPad[];
   launches?: Launch[];
   showLaunchPads?: boolean;
+  flyToTarget?: { lat: number; lng: number } | null;
+  onFlyToDone?: () => void;
 }
 
 const CONSTELLATION_COUNTRY: Record<string, string> = {
@@ -55,6 +57,7 @@ export function GlobeView({
   onSatelliteClick, selectedId, onCameraChange,
   cameraPreset, onPresetApplied, followMode,
   launchPads, launches, showLaunchPads,
+  flyToTarget, onFlyToDone,
 }: GlobeViewProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const sceneRef = useRef<GlobeScene | null>(null);
@@ -142,6 +145,14 @@ export function GlobeView({
   useEffect(() => {
     if (sceneRef.current) sceneRef.current.setShowLaunchPads(showLaunchPads ?? true);
   }, [showLaunchPads]);
+
+  // 飛到指定座標
+  useEffect(() => {
+    if (sceneRef.current && flyToTarget) {
+      sceneRef.current.flyToLatLng(flyToTarget.lat, flyToTarget.lng);
+      onFlyToDone?.();
+    }
+  }, [flyToTarget, onFlyToDone]);
 
   return (
     <div ref={containerRef} style={{ position: "absolute", inset: 0, width: "100%", height: "100%", cursor: "grab" }} />
