@@ -17,9 +17,12 @@ import {
   Search,
   Camera,
   Info,
+  Rocket,
 } from "lucide-react";
+import type { Launch } from "../data/launchLoader";
+import { LaunchPanel } from "./LaunchPanel";
 
-type PanelId = "settings" | "filters" | "colors" | "stats" | "camera";
+type PanelId = "settings" | "filters" | "colors" | "stats" | "camera" | "launches";
 
 export interface SidebarProps {
   tles: SatelliteTLE[];
@@ -50,9 +53,13 @@ export interface SidebarProps {
   onClearConstellations?: () => void;
   onSelectAllCountries?: () => void;
   onClearCountries?: () => void;
+  showLaunchPads?: boolean;
+  onShowLaunchPadsChange?: (v: boolean) => void;
   onInfoClick?: () => void;
   onCameraPreset?: (preset: string) => void;
   isMobile?: boolean;
+  launches?: Launch[];
+  onFlyToLaunch?: (lat: number, lng: number, launch?: Launch) => void;
 }
 
 /* ── Design Tokens (from Pencil) ─────────────────────── */
@@ -227,6 +234,10 @@ function SettingsPanel(props: SidebarProps) {
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
           <span style={{ fontSize: 13, fontFamily: T.FONT, color: T.FONT_SECONDARY }}>日夜交替</span>
           <ToggleSwitch checked={props.showDayNight} onChange={props.onShowDayNightChange} />
+        </div>
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+          <span style={{ fontSize: 13, fontFamily: T.FONT, color: T.FONT_SECONDARY }}>發射台標記</span>
+          <ToggleSwitch checked={props.showLaunchPads ?? true} onChange={(v) => props.onShowLaunchPadsChange?.(v)} />
         </div>
       </div>
 
@@ -716,6 +727,7 @@ const PANEL_WIDTH: Record<PanelId, number> = {
   colors: 260,
   stats: 300,
   camera: 240,
+  launches: 320,
 };
 
 /* ── Main Panel Titles ───────────────────────────────── */
@@ -726,6 +738,7 @@ const PANELS: Array<{ id: PanelId; icon: (props: { size: number }) => ReactNode;
   { id: "colors", icon: ({ size }) => <Palette size={size} />, title: "配色主題" },
   { id: "stats", icon: (_props: { size: number }) => <IconBarChart />, title: "統計" },
   { id: "camera", icon: ({ size }) => <Camera size={size} />, title: "視角" },
+  { id: "launches", icon: ({ size }) => <Rocket size={size} />, title: "發射時程" },
 ];
 
 /* ── Main Component ──────────────────────────────────── */
@@ -775,6 +788,7 @@ export function Sidebar(props: SidebarProps) {
         {activePanel === "colors" && <ColorsPanel {...props} />}
         {activePanel === "stats" && <StatsPanel {...props} />}
         {activePanel === "camera" && <CameraPanel {...props} />}
+        {activePanel === "launches" && <LaunchPanel launches={props.launches ?? []} onFlyTo={(lat, lng, launch) => props.onFlyToLaunch?.(lat, lng, launch)} />}
       </div>
     </div>
   );

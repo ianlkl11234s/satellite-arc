@@ -5,6 +5,7 @@
 import { useEffect, useRef } from "react";
 import { GlobeScene, type SatellitePosition } from "./GlobeScene";
 import type { SatelliteTLE } from "../data/satelliteLoader";
+import type { LaunchPad, Launch } from "../data/launchLoader";
 
 export interface CameraInfo {
   distance: number;
@@ -35,6 +36,11 @@ interface GlobeViewProps {
   cameraPreset?: CameraPreset | null;
   onPresetApplied?: () => void;
   followMode?: boolean;
+  launchPads?: LaunchPad[];
+  launches?: Launch[];
+  showLaunchPads?: boolean;
+  flyToTarget?: { lat: number; lng: number } | null;
+  onFlyToDone?: () => void;
 }
 
 const CONSTELLATION_COUNTRY: Record<string, string> = {
@@ -50,6 +56,8 @@ export function GlobeView({
   colors, visibleConstellations, visibleCountries,
   onSatelliteClick, selectedId, onCameraChange,
   cameraPreset, onPresetApplied, followMode,
+  launchPads, launches, showLaunchPads,
+  flyToTarget, onFlyToDone,
 }: GlobeViewProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const sceneRef = useRef<GlobeScene | null>(null);
@@ -126,6 +134,25 @@ export function GlobeView({
   useEffect(() => {
     if (sceneRef.current) sceneRef.current.setFollowMode(!!followMode);
   }, [followMode]);
+
+  // 發射台
+  useEffect(() => {
+    if (sceneRef.current && launchPads && launchPads.length > 0) {
+      sceneRef.current.setLaunchPads(launchPads, launches ?? []);
+    }
+  }, [launchPads, launches]);
+
+  useEffect(() => {
+    if (sceneRef.current) sceneRef.current.setShowLaunchPads(showLaunchPads ?? true);
+  }, [showLaunchPads]);
+
+  // 飛到指定座標
+  useEffect(() => {
+    if (sceneRef.current && flyToTarget) {
+      sceneRef.current.flyToLatLng(flyToTarget.lat, flyToTarget.lng);
+      onFlyToDone?.();
+    }
+  }, [flyToTarget, onFlyToDone]);
 
   return (
     <div ref={containerRef} style={{ position: "absolute", inset: 0, width: "100%", height: "100%", cursor: "grab" }} />

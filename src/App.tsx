@@ -4,6 +4,7 @@ import type { SatellitePosition } from "./globe/GlobeScene";
 import type { SatelliteTLE } from "./data/satelliteLoader";
 import { loadSatelliteTLEs, convertSatellitesToFlights, loadSatelliteCatalog, type SatelliteCatalog, CATEGORIES } from "./data/satelliteLoader";
 import { getSatelliteInfo, ORBIT_TYPE_LABELS } from "./data/satelliteInfo";
+import { loadUpcomingLaunches, loadLaunchPads, type Launch, type LaunchPad } from "./data/launchLoader";
 import { Sidebar } from "./components/Sidebar";
 import { useIsMobile } from "./hooks/useIsMobile";
 import { LoadingScreen } from "./components/LoadingScreen";
@@ -41,6 +42,13 @@ export default function App() {
   const [showTrails, setShowTrails] = useState(true);
   const [showOrbits, setShowOrbits] = useState(false);
   const [showDayNight, setShowDayNight] = useState(true);
+  const [showLaunchPads, setShowLaunchPads] = useState(true);
+
+  // 發射資料
+  const [launches, setLaunches] = useState<Launch[]>([]);
+  const [launchPads, setLaunchPads] = useState<LaunchPad[]>([]);
+  const [selectedLaunch, setSelectedLaunch] = useState<Launch | null>(null);
+  const [flyToTarget, setFlyToTarget] = useState<{ lat: number; lng: number } | null>(null);
   const [orbitOpacity, setOrbitOpacity] = useState(0.35);
   const [orbScale, setOrbScale] = useState(0.8);
   const [orbOpacity, setOrbOpacity] = useState(0.9);
@@ -96,6 +104,13 @@ export default function App() {
     loadSatelliteTLEs()
       .then((data) => { setTles(data); setLoading(false); })
       .catch((err) => { setError(String(err)); setLoading(false); });
+  }, []);
+
+  // 載入發射資料（非阻塞，背景載入）
+  useEffect(() => {
+    Promise.all([loadUpcomingLaunches(), loadLaunchPads()])
+      .then(([l, p]) => { setLaunches(l); setLaunchPads(p); })
+      .catch((err) => console.warn("Launch data load failed:", err));
   }, []);
 
   const filteredTles = useMemo(() => {
@@ -260,6 +275,11 @@ export default function App() {
         cameraPreset={cameraPreset}
         onPresetApplied={handlePresetApplied}
         followMode={followMode}
+        launchPads={launchPads}
+        launches={launches}
+        showLaunchPads={showLaunchPads}
+        flyToTarget={flyToTarget}
+        onFlyToDone={useCallback(() => setFlyToTarget(null), [])}
       />
 
       {/* Icon Rail Sidebar */}
@@ -294,7 +314,18 @@ export default function App() {
         onClearCountries={() => setVisibleCountries(new Set())}
         onInfoClick={() => setShowInfo(true)}
         onCameraPreset={(preset) => setCameraPreset(preset as CameraPreset)}
+        showLaunchPads={showLaunchPads}
+        onShowLaunchPadsChange={setShowLaunchPads}
         isMobile={isMobile}
+        launches={launches}
+        onFlyToLaunch={(lat, lng, launch) => {
+          setFlyToTarget({ lat, lng });
+          setSelectedLaunch(launch ?? null);
+          // 取消衛星選取
+          setSelectedSat(null);
+          setCatalog(null);
+          setFollowMode(false);
+        }}
       />
 
       {/* Header */}
@@ -421,6 +452,82 @@ export default function App() {
         );
       })()}
 
+      {/* 選中發射任務資訊卡 */}
+      {selectedLaunch && (
+        <div style={{
+          position: "absolute", zIndex: 10,
+          ...(isMobile
+            ? { bottom: 58, left: 8, right: 8, maxHeight: "50vh", width: "auto" }
+            : { top: 60, right: 16, width: 320, maxHeight: "calc(100vh - 140px)" }),
+          overflowY: "auto",
+          background: "#12161ECC", backdropFilter: "blur(24px)",
+          borderRadius: 14, border: "1px solid rgba(255,255,255,0.06)",
+          padding: "16px 20px", fontFamily: FONT,
+          display: "flex", flexDirection: "column", gap: 4,
+        }}>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 4 }}>
+            <span style={{ fontSize: 14, fontWeight: 700, color: "#fff" }}>
+              {selectedLaunch.rocket_full_name || selectedLaunch.rocket_name}
+            </span>
+            <button onClick={() => setSelectedLaunch(null)} style={{
+              width: 22, height: 22, display: "flex", alignItems: "center", justifyContent: "center",
+              background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.06)",
+              borderRadius: 6, color: "#6B7280", cursor: "pointer", padding: 0,
+            }}>
+              <X size={11} />
+            </button>
+          </div>
+
+          {selectedLaunch.mission_name && (
+            <div style={{ fontSize: 13, color: "rgba(255,255,255,0.85)", marginBottom: 2 }}>
+              {selectedLaunch.mission_name}
+            </div>
+          )}
+
+          {selectedLaunch.mission_description && (
+            <div style={{ fontSize: 11, color: "rgba(255,255,255,0.5)", marginBottom: 6, lineHeight: 1.5 }}>
+              {selectedLaunch.mission_description}
+            </div>
+          )}
+
+          <div style={{ height: 1, background: "rgba(255,255,255,0.06)", margin: "2px 0" }} />
+
+          <InfoRow label="Status" value={
+            <span style={{ color: selectedLaunch.status === "Go" ? "#4caf50" : selectedLaunch.status === "Success" ? "#4caf50" : "#ff9800" }}>
+              {selectedLaunch.status_name || selectedLaunch.status}
+            </span>
+          } />
+          {selectedLaunch.net && (
+            <InfoRow label="NET" value={new Date(selectedLaunch.net).toLocaleString("zh-TW", {
+              timeZone: "Asia/Taipei", year: "numeric", month: "2-digit", day: "2-digit",
+              hour: "2-digit", minute: "2-digit", hour12: false,
+            })} />
+          )}
+          <InfoRow label="Rocket" value={selectedLaunch.rocket_full_name || selectedLaunch.rocket_name} />
+          {selectedLaunch.agency_name && <InfoRow label="Agency" value={selectedLaunch.agency_name} />}
+          {selectedLaunch.orbit_name && <InfoRow label="Orbit" value={`${selectedLaunch.orbit_name}${selectedLaunch.orbit_abbrev ? ` (${selectedLaunch.orbit_abbrev})` : ""}`} />}
+          {selectedLaunch.mission_type && <InfoRow label="Type" value={selectedLaunch.mission_type} />}
+          {selectedLaunch.program_names && <InfoRow label="Program" value={selectedLaunch.program_names} />}
+
+          <div style={{ height: 1, background: "rgba(255,255,255,0.06)", margin: "2px 0" }} />
+
+          <InfoRow label="Pad" value={selectedLaunch.pad_name} />
+          <InfoRow label="Location" value={selectedLaunch.location_name} />
+          {selectedLaunch.probability != null && <InfoRow label="Probability" value={`${selectedLaunch.probability}%`} />}
+          {selectedLaunch.weather_concerns && <InfoRow label="Weather" value={selectedLaunch.weather_concerns} />}
+
+          {selectedLaunch.webcast_live && (
+            <div style={{ marginTop: 4, fontSize: 11, color: "#f44336", fontWeight: 700 }}>● LIVE WEBCAST</div>
+          )}
+
+          {selectedLaunch.image_url && (
+            <img src={selectedLaunch.image_url} alt="" style={{
+              width: "100%", borderRadius: 8, marginTop: 8, opacity: 0.85,
+            }} />
+          )}
+        </div>
+      )}
+
       {/* 重新計算 overlay */}
       {recalculating && (
         <div style={{
@@ -481,14 +588,29 @@ export default function App() {
           ))}
         </div>
 
-        {/* Slider track — 手機隱藏 */}
+        {/* 時間軸 slider — 可拖拉，範圍 ±12 小時 */}
         {!isMobile && (
-          <div style={{
-            width: 180, height: 3, borderRadius: 2,
-            background: "rgba(255,255,255,0.08)", overflow: "hidden", flexShrink: 0,
-          }}>
-            <div style={{ height: "100%", width: "50%", borderRadius: 2, background: "#5B9CF6" }} />
-          </div>
+          <input
+            type="range"
+            min={-12}
+            max={12}
+            step={0.05}
+            value={(() => {
+              const diffHours = (simTimeRef.current - Date.now() / 1000) / 3600;
+              return Math.max(-12, Math.min(12, diffHours));
+            })()}
+            onChange={(e) => {
+              const hours = parseFloat(e.target.value);
+              simTimeRef.current = Date.now() / 1000 + hours * 3600;
+              setPlaying(false);
+            }}
+            style={{
+              width: 180, height: 4, appearance: "none", WebkitAppearance: "none",
+              background: "rgba(255,255,255,0.08)", borderRadius: 2,
+              outline: "none", cursor: "pointer", flexShrink: 0,
+              accentColor: "#5B9CF6",
+            }}
+          />
         )}
 
         {/* Time */}
