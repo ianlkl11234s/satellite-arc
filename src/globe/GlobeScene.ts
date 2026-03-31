@@ -323,9 +323,13 @@ export class GlobeScene {
 
     const elapsed = this.clock.getElapsedTime();
     const currentTime = this.getCurrentTime();
+    const simDate = new Date(currentTime * 1000);
+
+    // 更新日夜交替
+    this.earth.updateSunDirection(simDate);
 
     if (this.tles.length > 0) {
-      const date = new Date(currentTime * 1000);
+      const date = simDate;
       const gmst = satellite.gstime(date);
 
       // 分批計算：每幀只算 1/BATCH_COUNT 的衛星
