@@ -54,16 +54,16 @@ void main() {
   // dot(normal, sunDir): 1=正午, 0=晨昏線, -1=午夜
   float sunDot = dot(vNormalW, sunDirection);
 
-  // 平滑過渡帶（晨昏線 ± 0.15 範圍）
-  float blend = smoothstep(-0.15, 0.15, sunDot);
+  // 平滑過渡帶（晨昏線 ± 0.2 範圍，更寬的漸變）
+  float blend = smoothstep(-0.2, 0.2, sunDot);
 
-  // 夜間加亮城市燈光（讓夜景更明顯）
-  vec4 nightBoosted = nightColor * 1.2;
+  // 夜間：城市燈光 + 微微透出白天地表輪廓
+  vec4 nightBlend = nightColor * 1.1 + dayColor * 0.08;
 
-  // 白天稍微降低亮度避免太刺眼
-  vec4 dayDimmed = dayColor * (0.7 + 0.3 * max(sunDot, 0.0));
+  // 白天：依太陽角度漸變亮度
+  vec4 dayBlend = dayColor * (0.75 + 0.25 * max(sunDot, 0.0));
 
-  gl_FragColor = mix(nightBoosted, dayDimmed, blend);
+  gl_FragColor = mix(nightBlend, dayBlend, blend);
 }
 `;
 
