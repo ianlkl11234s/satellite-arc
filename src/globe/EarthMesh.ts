@@ -141,6 +141,7 @@ export class EarthMesh {
 
     Promise.all([dayPromise, nightPromise])
       .then(([dayTex, nightTex]) => {
+        this.nightTex = nightTex;
         this.earthMat = new THREE.ShaderMaterial({
           vertexShader: EARTH_VERT,
           fragmentShader: EARTH_FRAG,
@@ -165,10 +166,30 @@ export class EarthMesh {
       });
   }
 
+  private dayNightEnabled = true;
+  private nightOnlyMat: THREE.MeshBasicMaterial | null = null;
+  private nightTex: THREE.Texture | null = null;
+
   /** 每幀呼叫，更新太陽方向 */
   updateSunDirection(simDate: Date) {
-    if (this.earthMat) {
+    if (this.earthMat && this.dayNightEnabled) {
       this.earthMat.uniforms.sunDirection.value.copy(getSunDirection(simDate));
+    }
+  }
+
+  /** 切換日夜模式：true=日夜交替, false=純夜景 */
+  setDayNightEnabled(enabled: boolean) {
+    this.dayNightEnabled = enabled;
+    if (enabled && this.earthMat) {
+      this.globe.material = this.earthMat;
+    } else if (!enabled && this.nightTex) {
+      if (!this.nightOnlyMat) {
+        this.nightOnlyMat = new THREE.MeshBasicMaterial({
+          map: this.nightTex,
+          color: 0xffffff,
+        });
+      }
+      this.globe.material = this.nightOnlyMat;
     }
   }
 

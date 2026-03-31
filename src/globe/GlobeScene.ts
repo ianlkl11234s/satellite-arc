@@ -172,6 +172,10 @@ export class GlobeScene {
     this.orbits.setVisible(show);
   }
 
+  setShowDayNight(show: boolean) {
+    this.earth.setDayNightEnabled(show);
+  }
+
   setOrbScale(scale: number) {
     this.orbScale = scale;
     this.orbs.setScale(scale);

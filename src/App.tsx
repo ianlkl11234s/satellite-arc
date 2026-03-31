@@ -40,6 +40,7 @@ export default function App() {
   // 視覺參數
   const [showTrails, setShowTrails] = useState(true);
   const [showOrbits, setShowOrbits] = useState(false);
+  const [showDayNight, setShowDayNight] = useState(true);
   const [orbitOpacity, setOrbitOpacity] = useState(0.35);
   const [orbScale, setOrbScale] = useState(0.8);
   const [orbOpacity, setOrbOpacity] = useState(0.9);
@@ -245,6 +246,7 @@ export default function App() {
         visibleOrbitTypes={visibleCategories}
         showTrails={showTrails}
         showOrbits={showOrbits}
+        showDayNight={showDayNight}
         orbitOpacity={orbitOpacity}
         orbScale={orbScale}
         orbOpacity={orbOpacity}
@@ -270,6 +272,8 @@ export default function App() {
         onShowTrailsChange={setShowTrails}
         showOrbits={showOrbits}
         onShowOrbitsChange={setShowOrbits}
+        showDayNight={showDayNight}
+        onShowDayNightChange={setShowDayNight}
         orbitOpacity={orbitOpacity}
         onOrbitOpacityChange={setOrbitOpacity}
         orbScale={orbScale}

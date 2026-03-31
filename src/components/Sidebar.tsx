@@ -30,6 +30,8 @@ export interface SidebarProps {
   onShowTrailsChange: (v: boolean) => void;
   showOrbits: boolean;
   onShowOrbitsChange: (v: boolean) => void;
+  showDayNight: boolean;
+  onShowDayNightChange: (v: boolean) => void;
   orbitOpacity: number;
   onOrbitOpacityChange: (v: number) => void;
   orbScale: number;
@@ -221,6 +223,10 @@ function SettingsPanel(props: SidebarProps) {
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
           <span style={{ fontSize: 13, fontFamily: T.FONT, color: T.FONT_SECONDARY }}>靜態軌道線</span>
           <ToggleSwitch checked={props.showOrbits} onChange={props.onShowOrbitsChange} />
+        </div>
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+          <span style={{ fontSize: 13, fontFamily: T.FONT, color: T.FONT_SECONDARY }}>日夜交替</span>
+          <ToggleSwitch checked={props.showDayNight} onChange={props.onShowDayNightChange} />
         </div>
       </div>
 

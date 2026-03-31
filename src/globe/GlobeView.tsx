@@ -21,6 +21,7 @@ interface GlobeViewProps {
   visibleOrbitTypes: Set<string>;
   showTrails: boolean;
   showOrbits: boolean;
+  showDayNight?: boolean;
   orbitOpacity: number;
   orbScale: number;
   orbOpacity: number;
@@ -44,7 +45,7 @@ const CONSTELLATION_COUNTRY: Record<string, string> = {
 
 export function GlobeView({
   tles, orbits, getCurrentTime,
-  visibleOrbitTypes, showTrails, showOrbits,
+  visibleOrbitTypes, showTrails, showOrbits, showDayNight,
   orbitOpacity, orbScale, orbOpacity, trailLength,
   colors, visibleConstellations, visibleCountries,
   onSatelliteClick, selectedId, onCameraChange,
@@ -93,6 +94,7 @@ export function GlobeView({
   useEffect(() => { if (sceneRef.current) sceneRef.current.setVisibleOrbitTypes(visibleOrbitTypes); }, [visibleOrbitTypes]);
   useEffect(() => { if (sceneRef.current) sceneRef.current.setShowTrails(showTrails); }, [showTrails]);
   useEffect(() => { if (sceneRef.current) sceneRef.current.setShowOrbits(showOrbits); }, [showOrbits]);
+  useEffect(() => { if (sceneRef.current) sceneRef.current.setShowDayNight(showDayNight ?? true); }, [showDayNight]);
   useEffect(() => { if (sceneRef.current) sceneRef.current.setOrbitOpacity(orbitOpacity); }, [orbitOpacity]);
   useEffect(() => { if (sceneRef.current) sceneRef.current.setOrbScale(orbScale); }, [orbScale]);
   useEffect(() => { if (sceneRef.current) sceneRef.current.setOrbOpacity(orbOpacity); }, [orbOpacity]);
