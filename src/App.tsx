@@ -4,6 +4,7 @@ import type { SatellitePosition } from "./globe/GlobeScene";
 import type { SatelliteTLE } from "./data/satelliteLoader";
 import { loadSatelliteTLEs, convertSatellitesToFlights, loadSatelliteCatalog, type SatelliteCatalog, CATEGORIES } from "./data/satelliteLoader";
 import { getSatelliteInfo, ORBIT_TYPE_LABELS } from "./data/satelliteInfo";
+import { loadUpcomingLaunches, loadLaunchPads, type Launch, type LaunchPad } from "./data/launchLoader";
 import { Sidebar } from "./components/Sidebar";
 import { useIsMobile } from "./hooks/useIsMobile";
 import { LoadingScreen } from "./components/LoadingScreen";
@@ -41,6 +42,11 @@ export default function App() {
   const [showTrails, setShowTrails] = useState(true);
   const [showOrbits, setShowOrbits] = useState(false);
   const [showDayNight, setShowDayNight] = useState(true);
+  const [showLaunchPads, setShowLaunchPads] = useState(true);
+
+  // 發射資料
+  const [launches, setLaunches] = useState<Launch[]>([]);
+  const [launchPads, setLaunchPads] = useState<LaunchPad[]>([]);
   const [orbitOpacity, setOrbitOpacity] = useState(0.35);
   const [orbScale, setOrbScale] = useState(0.8);
   const [orbOpacity, setOrbOpacity] = useState(0.9);
@@ -96,6 +102,13 @@ export default function App() {
     loadSatelliteTLEs()
       .then((data) => { setTles(data); setLoading(false); })
       .catch((err) => { setError(String(err)); setLoading(false); });
+  }, []);
+
+  // 載入發射資料（非阻塞，背景載入）
+  useEffect(() => {
+    Promise.all([loadUpcomingLaunches(), loadLaunchPads()])
+      .then(([l, p]) => { setLaunches(l); setLaunchPads(p); })
+      .catch((err) => console.warn("Launch data load failed:", err));
   }, []);
 
   const filteredTles = useMemo(() => {
@@ -260,6 +273,9 @@ export default function App() {
         cameraPreset={cameraPreset}
         onPresetApplied={handlePresetApplied}
         followMode={followMode}
+        launchPads={launchPads}
+        launches={launches}
+        showLaunchPads={showLaunchPads}
       />
 
       {/* Icon Rail Sidebar */}
@@ -294,7 +310,14 @@ export default function App() {
         onClearCountries={() => setVisibleCountries(new Set())}
         onInfoClick={() => setShowInfo(true)}
         onCameraPreset={(preset) => setCameraPreset(preset as CameraPreset)}
+        showLaunchPads={showLaunchPads}
+        onShowLaunchPadsChange={setShowLaunchPads}
         isMobile={isMobile}
+        launches={launches}
+        onFlyToLaunch={(lat, lng) => {
+          // TODO: 飛到指定座標（未來可加入相機動畫）
+          console.log(`Fly to launch pad: ${lat}, ${lng}`);
+        }}
       />
 
       {/* Header */}

@@ -9,7 +9,9 @@ import { SatelliteOrbs } from "./SatelliteOrbs";
 import { OrbitLines } from "./OrbitLines";
 import { TrailLines, type TrailEntry } from "./TrailLines";
 import { geoToCartesian } from "./coordinates";
+import { LaunchPadMarkers } from "./LaunchPadMarkers";
 import type { SatelliteTLE } from "../data/satelliteLoader";
+import type { LaunchPad, Launch } from "../data/launchLoader";
 import * as satellite from "satellite.js";
 
 export interface SatellitePosition {
@@ -36,6 +38,7 @@ export class GlobeScene {
   private orbs: SatelliteOrbs;
   private orbits: OrbitLines;
   private trails: TrailLines;
+  private launchPads: LaunchPadMarkers;
   private animId = 0;
   private clock = new THREE.Clock();
 
@@ -121,6 +124,7 @@ export class GlobeScene {
     this.orbits = new OrbitLines(this.scene);
     this.orbits.setVisible(false); // 靜態軌道預設關
     this.trails = new TrailLines(this.scene, 13000, 10);
+    this.launchPads = new LaunchPadMarkers(this.scene);
 
     const onResize = () => {
       const w = container.clientWidth;
@@ -184,6 +188,14 @@ export class GlobeScene {
   setOrbOpacity(opacity: number) {
     this.orbOpacity = opacity;
     this.orbs.setOpacity(opacity);
+  }
+
+  setLaunchPads(pads: LaunchPad[], launches: Launch[]) {
+    this.launchPads.setPads(pads, launches);
+  }
+
+  setShowLaunchPads(show: boolean) {
+    this.launchPads.setVisible(show);
   }
 
   setColors(colors: Record<string, string>) {
@@ -420,6 +432,9 @@ export class GlobeScene {
       }
       this.updateSelectedRing();
     }
+
+    // 發射台脈衝動畫
+    this.launchPads.update(elapsed);
 
     this.renderer.render(this.scene, this.camera);
   }
