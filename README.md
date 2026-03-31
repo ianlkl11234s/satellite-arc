@@ -31,7 +31,15 @@
 - **統計** — 衛星總數、軌道分佈、用途圓餅圖、主要營運商
 - **視角** — 5 個預設相機視角快切
 
+### 太空發射
+- **全球發射台標記** — 233 個發射台地表標記，即將發射的台站顯示脈衝動畫（< 24h 紅色 / < 7d 橘色）
+- **發射時程面板** — 即將發射的任務列表，含倒數計時、狀態 badge、軌道類型
+- **點擊飛到發射台** — 點擊任務，相機平滑飛到對應發射台位置
+- **發射詳情卡片** — 火箭圖片、任務描述、機構、軌道參數、天氣、成功機率
+- **資料來源** — Launch Library 2 (TheSpaceDevs)，每日自動同步 upcoming + 回溯歷史 5 年
+
 ### 使用者體驗
+- **時間軸拖拉** — 可拖拉 ±12 小時，即時更新衛星位置
 - **時間加速** — 10x ~ 600x，觀察衛星繞地球
 - **點擊查看** — UCS 衛星目錄 7,560 筆（營運商、用途、發射資訊）
 - **Info Modal** — 操作指南 / 資料來源 / 使用技巧 / 關於 / 個人，支援中英文
@@ -42,16 +50,17 @@
 ## 技術架構
 
 ```
-CelesTrak (36 群組, 含碎片)
-    ↓ data-collectors (每 2 小時)
-Supabase satellite_tle + satellite_catalog
-    ↓ satellite_classified view (11 category 自動分類)
-    ↓ PostgREST API（分頁拉取，RLS 保護）
-瀏覽器載入 TLE + category + country
-    ↓ satellite.js SGP4
-每幀分批計算衛星位置（15,000 ÷ 4 批）
+CelesTrak (36 群組, 含碎片)          Launch Library 2 (TheSpaceDevs)
+    ↓ data-collectors (每 2 小時)        ↓ data-collectors (每 5 分鐘輪轉)
+Supabase satellite_tle               Supabase launches + launch_pads
+    + satellite_catalog                  + launch_events
+    ↓ satellite_classified view          ↓ launches_upcoming view
+    ↓ PostgREST API                      ↓ PostgREST API
+瀏覽器載入 TLE + category             瀏覽器載入 launches + pads
+    ↓ satellite.js SGP4                  ↓
+每幀分批計算衛星位置                   LaunchPadMarkers + LaunchPanel
     ↓ Three.js
-InstancedMesh 光點 + 歷史緩衝區尾巴 + 3D OrbitLines
+InstancedMesh 光點 + 歷史緩衝區尾巴 + 3D OrbitLines + 發射台標記
 ```
 
 ### 效能策略
@@ -76,6 +85,7 @@ Earth radius = 1.0
 | 來源 | 內容 | 更新頻率 |
 |------|------|---------|
 | **CelesTrak** (36 群組) → data-collectors → Supabase | TLE 軌道參數 (~15,000 顆，含太空碎片) | 每 2 小時 |
+| **Launch Library 2** (TheSpaceDevs) → data-collectors → Supabase | 發射時程 + 233 發射台 + 太空事件 | 每 5 分鐘輪轉 |
 | **UCS Satellite Database** → Supabase | 用途/營運商/發射資訊 (7,560 筆) | 靜態 |
 | **NASA Black Marble** | 地球夜景貼圖 | 靜態 |
 
@@ -94,13 +104,16 @@ src/
 │   ├── SatelliteOrbs.ts         ← InstancedMesh 衛星光點（呼吸動畫）
 │   ├── TrailLines.ts            ← 歷史緩衝區動態尾巴
 │   ├── OrbitLines.ts            ← 3D 靜態軌道弧線（真實高度映射）
+│   ├── LaunchPadMarkers.ts      ← 發射台地表標記 + 脈衝動畫
 │   └── coordinates.ts           ← 球面座標轉換 + altToRadius
 ├── components/
-│   ├── Sidebar.tsx              ← Icon Rail + 6 面板（設定/篩選/配色/統計/視角/Info）
+│   ├── Sidebar.tsx              ← Icon Rail + 7 面板（設定/篩選/配色/統計/視角/發射時程/Info）
+│   ├── LaunchPanel.tsx          ← 發射時程面板（倒數計時、詳情）
 │   ├── InfoModal.tsx            ← 操作指南/資料來源/使用技巧/關於/個人（中英文）
 │   └── LoadingScreen.tsx        ← 軌道動畫 + 步驟清單載入畫面
 ├── data/
 │   ├── satelliteLoader.ts       ← Supabase API + SGP4 + 11 分類定義
+│   ├── launchLoader.ts          ← Launch Library 2 資料載入（launches + pads）
 │   └── satelliteInfo.ts         ← 中文俗名對照表
 ├── hooks/
 │   └── useIsMobile.ts           ← 響應式斷點偵測
@@ -159,9 +172,10 @@ npm run build
 | 滾輪 | 縮放 |
 | 點擊衛星 | 查看詳細資訊（NORAD ID、軌道、營運商等） |
 | 點擊分類數字 | Solo 模式（只看這個分類） |
-| 底部時間軸 | 播放/暫停、時間加速（10-600x）、重設為現在 |
-| 側邊欄 | 設定 / 篩選 / 配色 / 統計 / 視角 / Info |
+| 底部時間軸 | 播放/暫停、拖拉 ±12h、時間加速（10-600x）、重設為現在 |
+| 側邊欄 | 設定 / 篩選 / 配色 / 統計 / 視角 / 發射時程 / Info |
 | 追蹤按鈕 | 選中衛星後出現，相機跟隨衛星繞行 |
+| 點擊發射任務 | 相機飛到發射台 + 顯示詳情卡片 |
 
 ## Roadmap
 
@@ -176,16 +190,17 @@ npm run build
 ### 資料擴充
 - **Space-Track 整合** — 完整軍事/機密衛星 + 碰撞預警（CDM）
 - **歷史回放** — 從 S3 歸檔載入過去 TLE，回放特定日期
+- **太空天氣** — NASA DONKI / NOAA SWPC 太陽風暴、極光帶視覺化
+- **ISS 即時追蹤** — Open Notify API 國際太空站位置標記
 
 ### 效能優化
-- **Web Worker** — SGP4 計算移到 Worker，完全不阻塞主線程
-- **GPU Compute** — WebGPU compute shader 平行 SGP4，支援 10 萬+ 衛星
+- **GPU Compute** — WebGPU compute shader 平行 SGP4，支援 10 萬+ 衛星（`perf/webgpu-sgp4` 分支開發中）
 
 ## 相關專案
 
 | 專案 | 角色 |
 |------|------|
-| `data-collectors` | 每 2 小時從 CelesTrak 36 群組收集 TLE → Supabase（含碎片、GLONASS 修正、失敗重試） |
+| `data-collectors` | CelesTrak TLE（每 2h）+ Launch Library 2 發射時程（每 5min 輪轉）→ Supabase |
 | `gis-platform` | Supabase schema + UCS 衛星目錄 + satellite_classified view（11 category）+ pg_cron 自動分區 |
 | `plan-art` | 航班軌跡視覺化（同系列） |
 
