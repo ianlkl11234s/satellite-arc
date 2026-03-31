@@ -588,14 +588,29 @@ export default function App() {
           ))}
         </div>
 
-        {/* Slider track — 手機隱藏 */}
+        {/* 時間軸 slider — 可拖拉，範圍 ±12 小時 */}
         {!isMobile && (
-          <div style={{
-            width: 180, height: 3, borderRadius: 2,
-            background: "rgba(255,255,255,0.08)", overflow: "hidden", flexShrink: 0,
-          }}>
-            <div style={{ height: "100%", width: "50%", borderRadius: 2, background: "#5B9CF6" }} />
-          </div>
+          <input
+            type="range"
+            min={-12}
+            max={12}
+            step={0.05}
+            value={(() => {
+              const diffHours = (simTimeRef.current - Date.now() / 1000) / 3600;
+              return Math.max(-12, Math.min(12, diffHours));
+            })()}
+            onChange={(e) => {
+              const hours = parseFloat(e.target.value);
+              simTimeRef.current = Date.now() / 1000 + hours * 3600;
+              setPlaying(false);
+            }}
+            style={{
+              width: 180, height: 4, appearance: "none", WebkitAppearance: "none",
+              background: "rgba(255,255,255,0.08)", borderRadius: 2,
+              outline: "none", cursor: "pointer", flexShrink: 0,
+              accentColor: "#5B9CF6",
+            }}
+          />
         )}
 
         {/* Time */}
