@@ -70,23 +70,26 @@ void main() {
 /* ── 太陽位置計算 ─────────────────────────────── */
 
 function getSunDirection(date: Date): THREE.Vector3 {
-  // 簡化太陽位置：基於日期計算太陽赤經赤緯
+  const DEG2RAD = Math.PI / 180;
+
   const dayOfYear = Math.floor(
     (date.getTime() - new Date(date.getFullYear(), 0, 0).getTime()) / 86400000,
   );
-  const hourUTC = date.getUTCHours() + date.getUTCMinutes() / 60;
+  const hourUTC = date.getUTCHours() + date.getUTCMinutes() / 60 + date.getUTCSeconds() / 3600;
 
   // 太陽赤緯（-23.45° ~ +23.45°）
   const declination = -23.45 * Math.cos((2 * Math.PI * (dayOfYear + 10)) / 365);
-  const decRad = (declination * Math.PI) / 180;
 
-  // 太陽時角：UTC 12:00 = 經度 0°
-  const hourAngle = ((hourUTC - 12) / 24) * 2 * Math.PI;
+  // 太陽直射經度：UTC 12:00 = 經度 0°，每小時西移 15°
+  const sunLng = (12 - hourUTC) * 15; // degrees
+  const sunLat = declination; // degrees
 
-  // 轉成 3D 方向（Y-up 座標系，lng=0 朝 +Z → 我們的座標系 lng=0 朝 -Z）
-  const x = Math.cos(decRad) * Math.sin(hourAngle);
-  const y = Math.sin(decRad);
-  const z = -Math.cos(decRad) * Math.cos(hourAngle);
+  // 用和 geoToCartesian 完全一致的座標轉換
+  const latRad = sunLat * DEG2RAD;
+  const lngRad = sunLng * DEG2RAD;
+  const x = Math.cos(latRad) * Math.cos(lngRad);
+  const y = Math.sin(latRad);
+  const z = -Math.cos(latRad) * Math.sin(lngRad);
 
   return new THREE.Vector3(x, y, z).normalize();
 }
