@@ -41,7 +41,7 @@ export default function App() {
   // 視覺參數
   const [showTrails, setShowTrails] = useState(true);
   const [showOrbits, setShowOrbits] = useState(false);
-  const [showDayNight, setShowDayNight] = useState(true);
+  const [showDayNight, setShowDayNight] = useState(false);
   const [showLaunchPads, setShowLaunchPads] = useState(true);
 
   // 發射資料
@@ -331,7 +331,7 @@ export default function App() {
       {/* Header */}
       <div style={{ position: "absolute", top: isMobile ? 8 : 16, left: isMobile ? 12 : 76, zIndex: 10, pointerEvents: "none", fontFamily: FONT }}>
         <h1 style={{ margin: 0, fontSize: isMobile ? 17 : 22, fontWeight: 700, color: "#fff", letterSpacing: -0.3 }}>
-          Satellite Tracker
+          Satellite Arc
         </h1>
         <div style={{ display: "flex", alignItems: "center", gap: 6, marginTop: 2 }}>
           <span style={{ fontSize: isMobile ? 11 : 13, color: "rgba(255,255,255,0.7)" }}>{visibleCount.toLocaleString()} satellites</span>

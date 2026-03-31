@@ -1,6 +1,6 @@
 /**
  * Info Modal — 操作指南 + 關於 + 個人
- * 改編自 plan-art InfoModal，適配 Satellite Tracker
+ * 改編自 plan-art InfoModal，適配 Satellite Arc
  */
 
 import { useState } from "react";
@@ -76,8 +76,8 @@ function GettingStartedPage({ lang }: { lang: Lang }) {
     <div style={{ display: "flex", flexDirection: "column", gap: 18 }}>
       <p style={{ fontSize: 13, lineHeight: 1.8, color: S.text, margin: 0 }}>
         {L
-          ? "歡迎使用 Satellite Tracker — 以 3D 球體呈現全球衛星即時軌跡的視覺化作品。"
-          : "Welcome to Satellite Tracker — a 3D globe visualization of real-time satellite trajectories worldwide."}
+          ? "歡迎使用 Satellite Arc — 以 3D 球體呈現全球衛星即時軌跡與太空發射時程的視覺化作品。"
+          : "Welcome to Satellite Arc — a 3D globe visualization of real-time satellite trajectories and space launch schedules."}
       </p>
 
       <SectionTitle>{L ? "地球操作" : "GLOBE CONTROLS"}</SectionTitle>
@@ -119,6 +119,9 @@ function GettingStartedPage({ lang }: { lang: Lang }) {
         <Card title={L ? "統計" : "Statistics"}>
           {L ? "衛星總數、軌道分佈、用途圓餅圖、主要營運商排名。" : "Total count, orbit distribution, category donut chart, top operators."}
         </Card>
+        <Card title={L ? "發射時程" : "Launches"}>
+          {L ? "即將發射的太空任務列表，含倒數計時、狀態。點擊可飛到發射台並顯示詳情卡片。" : "Upcoming space launches with countdown and status. Click to fly to the launch pad and view details."}
+        </Card>
       </div>
 
       <SectionTitle>{L ? "預設視角" : "CAMERA PRESETS"}</SectionTitle>
@@ -137,8 +140,20 @@ function GettingStartedPage({ lang }: { lang: Lang }) {
       <SectionTitle>{L ? "時間軸控制" : "TIMELINE"}</SectionTitle>
       <Card title={L ? "時間控制列" : "Timeline Bar"}>
         {L
-          ? "底部的控制列可暫停/播放時間、切換速度倍率（10x/60x/300x/600x）、跳轉至「NOW」即時。"
-          : "The bottom timeline bar lets you pause/play, switch speed (10x/60x/300x/600x), and jump to NOW."}
+          ? "底部的控制列可暫停/播放時間、拖拉 ±12 小時、切換速度倍率（10x/60x/300x/600x）、跳轉至「NOW」即時。"
+          : "The bottom timeline bar lets you pause/play, drag ±12 hours, switch speed (10x/60x/300x/600x), and jump to NOW."}
+      </Card>
+
+      <SectionTitle>{L ? "太空發射" : "SPACE LAUNCHES"}</SectionTitle>
+      <Card title={L ? "發射台地標" : "Launch Pad Markers"}>
+        {L
+          ? "地球上標記了全球 233 個發射台。即將發射的台站會顯示紅色（< 24h）或橘色（< 7d）脈衝動畫。"
+          : "233 launch pads marked on the globe. Pads with upcoming launches show red (< 24h) or orange (< 7d) pulse animations."}
+      </Card>
+      <Card title={L ? "點擊發射任務" : "Click a Launch"}>
+        {L
+          ? "在側邊欄「發射時程」面板點擊任務，相機會平滑飛到對應發射台，並顯示詳情卡片（火箭、軌道、機構、天氣等）。"
+          : "Click a mission in the Launches panel — the camera smoothly flies to the launch pad and displays a detail card (rocket, orbit, agency, weather, etc.)."}
       </Card>
     </div>
   );
@@ -157,6 +172,11 @@ function DataSourcesPage({ lang }: { lang: Lang }) {
         {L
           ? "Union of Concerned Scientists 衛星資料庫 — 提供營運商、國家、用途、發射日期、質量等詳細目錄資料（7,500+ 筆）。"
           : "Detailed catalog data from UCS — operator, country, purpose, launch date, mass, etc. (7,500+ records)."}
+      </Card>
+      <Card title="Launch Library 2 (TheSpaceDevs)" accentColor="#ff7043">
+        {L
+          ? "太空發射排程資料庫 — 涵蓋全球 233 個發射台、即將發射的任務、歷史發射紀錄（回溯 5 年）及太空事件。"
+          : "Space launch schedule database — 233 launch pads worldwide, upcoming missions, historical launches (5 years back), and space events."}
       </Card>
       <Card title="satellite.js (SGP4)" accentColor="#ce93d8">
         {L
@@ -191,11 +211,17 @@ function TipsPage({ lang }: { lang: Lang }) {
       "選中衛星後可開啟追蹤模式，相機會平滑跟隨衛星繞行地球",
       "右鍵拖曳可平移地球，重置按鈕回到原位",
     ]},
+    { cat: "太空發射", items: [
+      "側邊欄 Rocket icon 開啟發射時程面板，顯示即將發射的任務",
+      "點擊任務可飛到發射台並查看火箭、軌道、機構等詳細資訊",
+      "發射台標記：紅色脈衝 = 24 小時內發射、橘色 = 7 天內",
+      "時間軸可拖拉 ±12 小時，觀察不同時間的衛星分佈",
+    ]},
     { cat: "小知識", items: [
       "LEO（低軌）衛星高度 200-2,000 km，繞行一圈約 90 分鐘",
       "GEO（同步軌道）衛星高度 ~36,000 km，與地球同步旋轉",
       "太空碎片是 2007 中國反衛星試驗和 2009 Cosmos/Iridium 碰撞的殘骸",
-      "資料每 2 小時從 CelesTrak 更新一次",
+      "發射資料來自 Launch Library 2 (TheSpaceDevs)，每日自動同步",
     ]},
   ] : [
     { cat: "Visual", items: [
@@ -214,11 +240,17 @@ function TipsPage({ lang }: { lang: Lang }) {
       "Follow mode tracks the selected satellite as it orbits the Earth",
       "Right-click drag to pan the globe, reset button returns to origin",
     ]},
+    { cat: "Launches", items: [
+      "Open the Launches panel via the Rocket icon to see upcoming missions",
+      "Click a mission to fly to the launch pad and view rocket, orbit, and agency details",
+      "Launch pad markers: red pulse = within 24h, orange = within 7 days",
+      "Drag the timeline ±12 hours to observe satellite distribution at different times",
+    ]},
     { cat: "Fun Facts", items: [
       "LEO satellites orbit at 200-2,000 km altitude, completing one orbit in ~90 minutes",
       "GEO satellites at ~36,000 km rotate in sync with Earth",
       "Space debris includes remnants from the 2007 Chinese ASAT test and 2009 Cosmos/Iridium collision",
-      "Data updates every 2 hours from CelesTrak",
+      "Launch data from Launch Library 2 (TheSpaceDevs), synced daily",
     ]},
   ];
 
@@ -246,7 +278,7 @@ function AboutPage({ lang }: { lang: Lang }) {
   const L = lang === "zh";
   const stats = [
     { num: "15,000+", label: { zh: "追蹤衛星", en: "Satellites" } },
-    { num: "36", label: { zh: "CelesTrak 群組", en: "CelesTrak Groups" } },
+    { num: "233", label: { zh: "發射台", en: "Launch Pads" } },
     { num: "11", label: { zh: "用途分類", en: "Categories" } },
     { num: "7,500+", label: { zh: "UCS 目錄", en: "UCS Records" } },
   ];
@@ -254,11 +286,11 @@ function AboutPage({ lang }: { lang: Lang }) {
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 18 }}>
       <div>
-        <h2 style={{ fontSize: 18, color: S.text, margin: "0 0 10px", letterSpacing: 0.5, fontFamily: S.font }}>Satellite Tracker</h2>
+        <h2 style={{ fontSize: 18, color: S.text, margin: "0 0 10px", letterSpacing: 0.5, fontFamily: S.font }}>Satellite Arc</h2>
         <p style={{ fontSize: 13, lineHeight: 1.9, color: S.text, margin: 0 }}>
           {L
-            ? "全球衛星即時追蹤與 3D 視覺化。涵蓋 Starlink、GPS、OneWeb 等主要星座，以及太空碎片，將衛星軌跡轉化為圍繞地球的光軌藝術。"
-            : "Real-time global satellite tracking & 3D visualization. Covering Starlink, GPS, OneWeb, and space debris — transforming orbital trajectories into luminous art around the Earth."}
+            ? "全球衛星即時追蹤與太空發射時程 3D 視覺化。涵蓋 15,000+ 顆衛星、233 個發射台、即將發射的火箭任務，將太空動態轉化為圍繞地球的光軌藝術。"
+            : "Real-time satellite tracking & space launch schedule 3D visualization. Covering 15,000+ satellites, 233 launch pads, upcoming rocket missions — transforming space dynamics into luminous art around the Earth."}
         </p>
       </div>
 
@@ -284,7 +316,7 @@ function AboutPage({ lang }: { lang: Lang }) {
 
       <SectionTitle>{L ? "資料來源" : "DATA SOURCES"}</SectionTitle>
       <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-        {["CelesTrak TLE", "UCS Satellite DB", "SGP4 Propagation"].map((x) => (
+        {["CelesTrak TLE", "Launch Library 2", "UCS Satellite DB", "SGP4 Propagation"].map((x) => (
           <Tag key={x}>{x}</Tag>
         ))}
       </div>

@@ -1,4 +1,4 @@
-# Satellite Tracker
+# Satellite Arc
 
 3D 即時衛星軌道追蹤與視覺化。純 Three.js 渲染，瀏覽器端 SGP4 即時計算。
 

@@ -137,7 +137,7 @@ export function LoadingScreen({ loading, tleCount, preparing }: LoadingScreenPro
         color: "#fff", textShadow: "0 2px 12px rgba(91,156,246,0.3)",
         zIndex: 1, animation: "fadeInUp 0.6s ease-out",
       }}>
-        Satellite Tracker
+        Satellite Arc
       </h1>
 
       {/* Subtitle */}
@@ -145,7 +145,7 @@ export function LoadingScreen({ loading, tleCount, preparing }: LoadingScreenPro
         fontSize: 13, color: "rgba(255,255,255,0.45)", marginTop: 6, letterSpacing: 0.5,
         zIndex: 1, animation: "fadeInUp 0.6s ease-out 0.1s both",
       }}>
-        即時衛星追蹤與視覺化
+        即時衛星軌道與太空發射視覺化
       </div>
 
       {/* Progress bar */}
