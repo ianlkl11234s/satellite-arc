@@ -154,7 +154,13 @@ export class EarthMesh {
             sunDirection: { value: getSunDirection(new Date()) },
           },
         });
-        this.globe.material = this.earthMat;
+        // 套用當前日夜設定（setDayNightEnabled 可能在貼圖載入前已被呼叫）
+        if (this.dayNightEnabled) {
+          this.globe.material = this.earthMat;
+        } else {
+          this.nightOnlyMat = new THREE.MeshBasicMaterial({ map: nightTex, color: 0xffffff });
+          this.globe.material = this.nightOnlyMat;
+        }
       })
       .catch(() => {
         // 貼圖載入失敗，fallback 夜景
