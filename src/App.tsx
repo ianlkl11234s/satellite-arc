@@ -9,7 +9,7 @@ import { Sidebar } from "./components/Sidebar";
 import { useIsMobile } from "./hooks/useIsMobile";
 import { LoadingScreen } from "./components/LoadingScreen";
 import { InfoModal } from "./components/InfoModal";
-import { Play, Pause, X, LocateFixed } from "lucide-react";
+import { Play, Pause, X, LocateFixed, ChevronDown, ChevronUp } from "lucide-react";
 
 const SPEED_OPTIONS = [10, 60, 300, 600];
 const FONT = "'Inter', sans-serif";
@@ -83,6 +83,7 @@ export default function App() {
 
   // 選中衛星
   const [selectedSat, setSelectedSat] = useState<SatellitePosition | null>(null);
+  const [satCardExpanded, setSatCardExpanded] = useState(false);
   const [catalog, setCatalog] = useState<SatelliteCatalog | null>(null);
   const [catalogLoading, setCatalogLoading] = useState(false);
 
@@ -208,6 +209,7 @@ export default function App() {
 
   const handleSatelliteClick = useCallback((sat: SatellitePosition | null) => {
     setSelectedSat(sat);
+    setSatCardExpanded(false);
     setCatalog(null);
     if (!sat) setFollowMode(false);
     if (sat) {
@@ -387,8 +389,11 @@ export default function App() {
             borderRadius: 14, border: "1px solid rgba(255,255,255,0.06)",
             fontFamily: FONT, fontSize: 13, color: "#fff",
           }}>
-            {/* Card Header */}
-            <div style={{ padding: "16px 20px 12px" }}>
+            {/* Card Header — 點擊展開/收起 */}
+            <div
+              style={{ padding: "16px 20px 12px", cursor: "pointer" }}
+              onClick={() => setSatCardExpanded((v) => !v)}
+            >
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 8 }}>
                 <div style={{ flex: 1 }}>
                   <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
@@ -397,13 +402,21 @@ export default function App() {
                   </div>
                   {info && <div style={{ fontSize: 13, color: "rgba(255,255,255,0.45)", marginTop: 4 }}>{info.zhName}</div>}
                 </div>
-                <button onClick={() => setSelectedSat(null)} style={{
-                  width: 24, height: 24, display: "flex", alignItems: "center", justifyContent: "center",
-                  background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.06)", borderRadius: 6,
-                  color: "rgba(255,255,255,0.4)", cursor: "pointer", padding: 0, flexShrink: 0,
-                }}>
-                  <X size={12} />
-                </button>
+                <div style={{ display: "flex", gap: 4, flexShrink: 0 }}>
+                  <div style={{
+                    width: 24, height: 24, display: "flex", alignItems: "center", justifyContent: "center",
+                    color: "rgba(255,255,255,0.4)",
+                  }}>
+                    {satCardExpanded ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
+                  </div>
+                  <button onClick={(e) => { e.stopPropagation(); setSelectedSat(null); }} style={{
+                    width: 24, height: 24, display: "flex", alignItems: "center", justifyContent: "center",
+                    background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.06)", borderRadius: 6,
+                    color: "rgba(255,255,255,0.4)", cursor: "pointer", padding: 0, flexShrink: 0,
+                  }}>
+                    <X size={12} />
+                  </button>
+                </div>
               </div>
               {info && (
                 <div style={{ fontSize: 13, color: "rgba(255,255,255,0.45)", marginTop: 4 }}>
@@ -412,10 +425,11 @@ export default function App() {
               )}
             </div>
 
+            {/* Card Body — 展開時才顯示 */}
+            {satCardExpanded && (<>
             {/* Divider */}
             <div style={{ height: 1, background: "rgba(255,255,255,0.06)" }} />
 
-            {/* Card Body */}
             <div style={{ padding: "12px 20px 16px", display: "flex", flexDirection: "column", gap: 10 }}>
               <InfoRow label="NORAD ID" value={selectedSat.id.replace("sat_", "")} />
               <InfoRow label="Category" value={<><span style={{ color: satColor }}>{catInfo?.en ?? selectedSat.orbitType}</span>{catInfo && <span style={{ color: "rgba(255,255,255,0.3)" }}>（{catInfo.zh}）</span>}</>} />
@@ -449,6 +463,7 @@ export default function App() {
               <InfoRow label="Latitude" value={`${selectedSat.lat.toFixed(4)}°`} />
               <InfoRow label="Longitude" value={`${selectedSat.lng.toFixed(4)}°`} />
             </div>
+            </>)}
           </div>
         );
       })()}
