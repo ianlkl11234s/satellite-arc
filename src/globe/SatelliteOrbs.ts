@@ -48,7 +48,6 @@ export class SatelliteOrbs {
   }
 
   setColors(colors: Record<string, string>) {
-    this.customColors = colors;
     // 預轉換為 Color 物件，避免每幀 new Color()
     this._colorCache.clear();
     for (const [key, hex] of Object.entries(colors)) {
@@ -56,7 +55,6 @@ export class SatelliteOrbs {
     }
   }
 
-  private customColors: Record<string, string> = {};
   private _colorCache = new Map<string, THREE.Color>();
 
   constructor(scene: THREE.Scene) {
