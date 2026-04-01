@@ -161,7 +161,8 @@ export default function App() {
     const tick = () => {
       if (!running) return;
       const now = Date.now();
-      if (playingRef.current) simTimeRef.current += ((now - lastReal) / 1000) * speedRef.current;
+      const dtReal = Math.min((now - lastReal) / 1000, 1);   // cap 1s — 防止 tab 切回時瞬間跳太遠
+      if (playingRef.current) simTimeRef.current += dtReal * speedRef.current;
       lastReal = now;
       requestAnimationFrame(tick);
     };

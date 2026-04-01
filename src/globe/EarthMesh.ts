@@ -69,6 +69,8 @@ void main() {
 
 /* ── 太陽位置計算 ─────────────────────────────── */
 
+const _sunDir = new THREE.Vector3();
+
 function getSunDirection(date: Date): THREE.Vector3 {
   const DEG2RAD = Math.PI / 180;
 
@@ -87,11 +89,12 @@ function getSunDirection(date: Date): THREE.Vector3 {
   // 用和 geoToCartesian 完全一致的座標轉換
   const latRad = sunLat * DEG2RAD;
   const lngRad = sunLng * DEG2RAD;
-  const x = Math.cos(latRad) * Math.cos(lngRad);
-  const y = Math.sin(latRad);
-  const z = -Math.cos(latRad) * Math.sin(lngRad);
 
-  return new THREE.Vector3(x, y, z).normalize();
+  return _sunDir.set(
+    Math.cos(latRad) * Math.cos(lngRad),
+    Math.sin(latRad),
+    -Math.cos(latRad) * Math.sin(lngRad),
+  ).normalize();
 }
 
 /* ── EarthMesh Class ─────────────────────────── */

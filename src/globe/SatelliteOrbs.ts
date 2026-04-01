@@ -48,11 +48,16 @@ export class SatelliteOrbs {
   }
 
   setColors(colors: Record<string, string>) {
-    // 快取自訂色碼，update 時使用
     this.customColors = colors;
+    // 預轉換為 Color 物件，避免每幀 new Color()
+    this._colorCache.clear();
+    for (const [key, hex] of Object.entries(colors)) {
+      this._colorCache.set(key, new THREE.Color(hex));
+    }
   }
 
   private customColors: Record<string, string> = {};
+  private _colorCache = new Map<string, THREE.Color>();
 
   constructor(scene: THREE.Scene) {
     const sphereGeo = new THREE.SphereGeometry(1, 8, 8);
@@ -116,8 +121,7 @@ export class SatelliteOrbs {
       const phase = this.phaseOffsets[i]!;
       const pulse = 1.0 + Math.sin(time * 1.5 + phase) * 0.15;
 
-      const customHex = this.customColors[orbitType];
-      const color = customHex ? new THREE.Color(customHex) : (ORBIT_TYPE_COLORS[orbitType] ?? DEFAULT_COLOR);
+      const color = this._colorCache.get(orbitType) ?? ORBIT_TYPE_COLORS[orbitType] ?? DEFAULT_COLOR;
 
       // Core
       const coreScale = 0.004 * pulse * this.baseScale;

@@ -36,6 +36,8 @@ export class LaunchPadMarkers {
   private dummy = new THREE.Object3D();
   private entries: PadEntry[] = [];
   private visible = true;
+  private _tmpMat = new THREE.Matrix4();
+  private _tmpPos = new THREE.Vector3();
 
   constructor(private scene: THREE.Scene) {
     // 核心標記：小菱形（八面體）
@@ -161,13 +163,11 @@ export class LaunchPadMarkers {
 
     // 更新 ring scale（脈衝擴散效果）
     for (let i = 0; i < this.ring.count; i++) {
-      const m = new THREE.Matrix4();
-      this.ring.getMatrixAt(i, m);
-      const pos = new THREE.Vector3();
-      pos.setFromMatrixPosition(m);
+      this.ring.getMatrixAt(i, this._tmpMat);
+      this._tmpPos.setFromMatrixPosition(this._tmpMat);
 
-      this.dummy.position.copy(pos);
-      this.dummy.lookAt(pos.x * 2, pos.y * 2, pos.z * 2);
+      this.dummy.position.copy(this._tmpPos);
+      this.dummy.lookAt(this._tmpPos.x * 2, this._tmpPos.y * 2, this._tmpPos.z * 2);
       this.dummy.scale.setScalar(scale);
       this.dummy.updateMatrix();
       this.ring.setMatrixAt(i, this.dummy.matrix);

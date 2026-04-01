@@ -53,9 +53,9 @@ export class GlobeScene {
   private positionCache = new Map<number, SatellitePosition>();
 
   // 歷史位置環形緩衝區（用於動態尾巴，不需額外 SGP4）
-  // key: satellite index → 最近 N 幀的 [x,y,z] 位置
-  private historyBuffer = new Map<number, Array<[number, number, number]>>();
-  private historyMaxLen = 55; // 最多存幾幀歷史（支援尾巴最長 50 步）
+  // key: satellite index → 固定長度環形緩衝 [x,y,z]
+  private historyBuffer = new Map<number, { buf: Float64Array; len: number; head: number }>();
+  private historyMaxLen = 55;
   private historyWriteCounter = 0;
   private historyWriteInterval = 3; // 每 N 幀記錄一次位置
 
@@ -134,6 +134,11 @@ export class GlobeScene {
       this.renderer.setSize(w, h);
     };
     window.addEventListener("resize", onResize);
+
+    // tab 切回時清空歷史緩衝區，避免尾巴瞬間拉出超長線
+    document.addEventListener("visibilitychange", () => {
+      if (!document.hidden) this.historyBuffer.clear();
+    });
 
     this.animate();
   }
@@ -444,13 +449,17 @@ export class GlobeScene {
       this.historyWriteCounter++;
       if (this.historyWriteCounter % this.historyWriteInterval === 0) {
         for (const pos of entries) {
-          let hist = this.historyBuffer.get(pos.index);
-          if (!hist) {
-            hist = [];
-            this.historyBuffer.set(pos.index, hist);
+          let ring = this.historyBuffer.get(pos.index);
+          if (!ring) {
+            ring = { buf: new Float64Array(this.historyMaxLen * 3), len: 0, head: 0 };
+            this.historyBuffer.set(pos.index, ring);
           }
-          hist.unshift([pos.x, pos.y, pos.z]);
-          if (hist.length > this.historyMaxLen) hist.length = this.historyMaxLen;
+          const h = ring.head;
+          ring.buf[h * 3] = pos.x;
+          ring.buf[h * 3 + 1] = pos.y;
+          ring.buf[h * 3 + 2] = pos.z;
+          ring.head = (h + 1) % this.historyMaxLen;
+          if (ring.len < this.historyMaxLen) ring.len++;
         }
       }
 
@@ -460,9 +469,15 @@ export class GlobeScene {
         const trailEntries: TrailEntry[] = [];
         const maxPts = Math.min(this.trailLength, this.historyMaxLen);
         for (const pos of entries) {
-          const hist = this.historyBuffer.get(pos.index);
-          if (!hist || hist.length < 2) continue;
-          const points = hist.slice(0, maxPts);
+          const ring = this.historyBuffer.get(pos.index);
+          if (!ring || ring.len < 2) continue;
+          const n = Math.min(maxPts, ring.len);
+          const points: [number, number, number][] = [];
+          for (let j = 0; j < n; j++) {
+            // head-1 = 最新，往回讀
+            const idx = ((ring.head - 1 - j) % this.historyMaxLen + this.historyMaxLen) % this.historyMaxLen;
+            points.push([ring.buf[idx * 3], ring.buf[idx * 3 + 1], ring.buf[idx * 3 + 2]]);
+          }
           trailEntries.push({ points, orbitType: pos.orbitType });
         }
         this.trails.update(trailEntries);

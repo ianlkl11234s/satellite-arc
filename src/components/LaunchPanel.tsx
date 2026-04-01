@@ -66,6 +66,85 @@ interface LaunchPanelProps {
   onFlyTo?: (lat: number, lng: number, launch?: Launch) => void;
 }
 
+function LaunchCard({ l, now, onFlyTo, dimPast }: { l: Launch; now: number; onFlyTo?: (lat: number, lng: number, launch?: Launch) => void; dimPast: boolean }) {
+  const isPast = l.net ? new Date(l.net).getTime() < now : false;
+
+  return (
+    <div
+      key={l.id}
+      onClick={() => {
+        if (l.pad_latitude && l.pad_longitude && onFlyTo) {
+          onFlyTo(l.pad_latitude, l.pad_longitude, l);
+        }
+      }}
+      style={{
+        fontFamily: T.FONT,
+        background: "rgba(255,255,255,0.03)",
+        borderRadius: 6,
+        padding: "8px 10px",
+        cursor: l.pad_latitude ? "pointer" : "default",
+        border: `1px solid ${T.BORDER}`,
+        opacity: dimPast && isPast ? 0.5 : 1,
+        transition: "background 0.15s",
+      }}
+      onMouseEnter={(e) => { e.currentTarget.style.background = "rgba(255,255,255,0.07)"; }}
+      onMouseLeave={(e) => { e.currentTarget.style.background = "rgba(255,255,255,0.03)"; }}
+    >
+      {/* 第一行：火箭 + 狀態 + 倒數 */}
+      <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 4 }}>
+        <Rocket size={12} color={T.FG2} />
+        <span style={{ fontSize: 12, fontWeight: 600, color: T.FG1, flex: 1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+          {l.rocket_name || l.name.split(" | ")[0]}
+        </span>
+        <StatusBadge status={l.status} />
+        {l.net && !isPast && (
+          <span style={{ fontSize: 10, color: T.ACCENT, fontWeight: 600, fontVariantNumeric: "tabular-nums" }}>
+            {formatCountdown(l.net)}
+          </span>
+        )}
+      </div>
+
+      {/* 第二行：任務名稱 */}
+      <div style={{ fontSize: 11, color: T.FG2, marginBottom: 3, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+        {l.mission_name || l.name.split(" | ")[1] || "—"}
+      </div>
+
+      {/* 第三行：時間 + 地點 + 軌道 */}
+      <div style={{ display: "flex", gap: 10, fontSize: 10, color: T.FG3 }}>
+        {l.net && (
+          <span style={{ display: "flex", alignItems: "center", gap: 3 }}>
+            <Clock size={9} />
+            {new Date(l.net).toLocaleString("zh-TW", {
+              timeZone: "Asia/Taipei",
+              month: "numeric", day: "numeric",
+              hour: "2-digit", minute: "2-digit", hour12: false,
+            })}
+          </span>
+        )}
+        {l.location_name && (
+          <span style={{ display: "flex", alignItems: "center", gap: 3, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+            <MapPin size={9} />
+            {l.location_name.split(",")[0]}
+          </span>
+        )}
+        {l.orbit_abbrev && (
+          <span style={{ display: "flex", alignItems: "center", gap: 3 }}>
+            <Radio size={9} />
+            {l.orbit_abbrev}
+          </span>
+        )}
+      </div>
+
+      {/* Live 標籤 */}
+      {l.webcast_live && (
+        <div style={{ marginTop: 4, fontSize: 9, color: "#f44336", fontWeight: 700, letterSpacing: 0.5 }}>
+          ● LIVE
+        </div>
+      )}
+    </div>
+  );
+}
+
 export function LaunchPanel({ launches, onFlyTo }: LaunchPanelProps) {
   const [now, setNow] = useState(Date.now());
 
@@ -83,90 +162,30 @@ export function LaunchPanel({ launches, onFlyTo }: LaunchPanelProps) {
     );
   }
 
+  const upcoming = launches.filter((l) => !l.net || new Date(l.net).getTime() >= now);
+  const recent = launches.filter((l) => l.net && new Date(l.net).getTime() < now).reverse(); // 最新的在最前
+
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-      <div style={{ fontSize: 11, color: T.FG3, fontFamily: T.FONT, marginBottom: 4 }}>
-        即將發射 · {launches.length} 筆
-      </div>
-
-      {launches.slice(0, 20).map((l) => {
-        const isPast = l.net ? new Date(l.net).getTime() < now : false;
-
-        return (
-          <div
-            key={l.id}
-            onClick={() => {
-              if (l.pad_latitude && l.pad_longitude && onFlyTo) {
-                onFlyTo(l.pad_latitude, l.pad_longitude, l);
-              }
-            }}
-            style={{
-              fontFamily: T.FONT,
-              background: "rgba(255,255,255,0.03)",
-              borderRadius: 6,
-              padding: "8px 10px",
-              cursor: l.pad_latitude ? "pointer" : "default",
-              border: `1px solid ${T.BORDER}`,
-              opacity: isPast ? 0.5 : 1,
-              transition: "background 0.15s",
-            }}
-            onMouseEnter={(e) => { e.currentTarget.style.background = "rgba(255,255,255,0.07)"; }}
-            onMouseLeave={(e) => { e.currentTarget.style.background = "rgba(255,255,255,0.03)"; }}
-          >
-            {/* 第一行：火箭 + 狀態 + 倒數 */}
-            <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 4 }}>
-              <Rocket size={12} color={T.FG2} />
-              <span style={{ fontSize: 12, fontWeight: 600, color: T.FG1, flex: 1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                {l.rocket_name || l.name.split(" | ")[0]}
-              </span>
-              <StatusBadge status={l.status} />
-              {l.net && !isPast && (
-                <span style={{ fontSize: 10, color: T.ACCENT, fontWeight: 600, fontVariantNumeric: "tabular-nums" }}>
-                  {formatCountdown(l.net)}
-                </span>
-              )}
-            </div>
-
-            {/* 第二行：任務名稱 */}
-            <div style={{ fontSize: 11, color: T.FG2, marginBottom: 3, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-              {l.mission_name || l.name.split(" | ")[1] || "—"}
-            </div>
-
-            {/* 第三行：時間 + 地點 + 軌道 */}
-            <div style={{ display: "flex", gap: 10, fontSize: 10, color: T.FG3 }}>
-              {l.net && (
-                <span style={{ display: "flex", alignItems: "center", gap: 3 }}>
-                  <Clock size={9} />
-                  {new Date(l.net).toLocaleString("zh-TW", {
-                    timeZone: "Asia/Taipei",
-                    month: "numeric", day: "numeric",
-                    hour: "2-digit", minute: "2-digit", hour12: false,
-                  })}
-                </span>
-              )}
-              {l.location_name && (
-                <span style={{ display: "flex", alignItems: "center", gap: 3, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                  <MapPin size={9} />
-                  {l.location_name.split(",")[0]}
-                </span>
-              )}
-              {l.orbit_abbrev && (
-                <span style={{ display: "flex", alignItems: "center", gap: 3 }}>
-                  <Radio size={9} />
-                  {l.orbit_abbrev}
-                </span>
-              )}
-            </div>
-
-            {/* Live 標籤 */}
-            {l.webcast_live && (
-              <div style={{ marginTop: 4, fontSize: 9, color: "#f44336", fontWeight: 700, letterSpacing: 0.5 }}>
-                ● LIVE
-              </div>
-            )}
+      {/* 近期已發射 */}
+      {recent.length > 0 && (
+        <>
+          <div style={{ fontSize: 11, color: T.FG3, fontFamily: T.FONT, marginBottom: 4 }}>
+            近期已發射 · {recent.length} 筆
           </div>
-        );
-      })}
+          {recent.slice(0, 10).map((l) => (
+            <LaunchCard key={l.id} l={l} now={now} onFlyTo={onFlyTo} dimPast={true} />
+          ))}
+        </>
+      )}
+
+      {/* 即將發射 */}
+      <div style={{ fontSize: 11, color: T.FG3, fontFamily: T.FONT, marginTop: recent.length > 0 ? 12 : 0, marginBottom: 4 }}>
+        即將發射 · {upcoming.length} 筆
+      </div>
+      {upcoming.slice(0, 20).map((l) => (
+        <LaunchCard key={l.id} l={l} now={now} onFlyTo={onFlyTo} dimPast={false} />
+      ))}
     </div>
   );
 }
