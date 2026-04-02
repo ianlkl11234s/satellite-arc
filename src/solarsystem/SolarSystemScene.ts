@@ -377,6 +377,13 @@ export class SolarSystemScene {
     if (this.asteroidBelt) (this.asteroidBelt.material as THREE.PointsMaterial).size = size;
   }
 
+  setClassColors(colors: Record<string, string>) {
+    for (const [cls, { points }] of this.smallBodyClouds.entries()) {
+      const hex = colors[cls];
+      if (hex) (points.material as THREE.PointsMaterial).color.set(hex);
+    }
+  }
+
   setParticleOpacity(opacity: number) {
     for (const { points } of this.smallBodyClouds.values()) {
       (points.material as THREE.PointsMaterial).opacity = opacity;

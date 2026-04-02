@@ -18,12 +18,13 @@ export interface SolarSystemViewProps {
   visibleClasses: Record<string, boolean>;
   particleSize: number;
   particleOpacity: number;
+  classColors?: Record<string, string>;
 }
 
 export function SolarSystemView({
   getCurrentTime, orbitOpacity, planetScale,
   glowOpacity, showLabels, showOrbits, showAsteroidBelt,
-  smallBodies, visibleClasses, particleSize, particleOpacity,
+  smallBodies, visibleClasses, particleSize, particleOpacity, classColors,
 }: SolarSystemViewProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const sceneRef = useRef<SolarSystemScene | null>(null);
@@ -55,6 +56,7 @@ export function SolarSystemView({
   }, [visibleClasses]);
   useEffect(() => { if (sceneRef.current) sceneRef.current.setParticleSize(particleSize); }, [particleSize]);
   useEffect(() => { if (sceneRef.current) sceneRef.current.setParticleOpacity(particleOpacity); }, [particleOpacity]);
+  useEffect(() => { if (sceneRef.current && classColors) sceneRef.current.setClassColors(classColors); }, [classColors]);
 
   return (
     <div

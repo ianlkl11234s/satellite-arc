@@ -111,6 +111,10 @@ export default function App() {
   const [solarVisibleClasses, setSolarVisibleClasses] = useState<Record<string, boolean>>({ MBA: true, TJN: true, NEO: true, TNO: true, CEN: true, HTC: true, JFC: true });
   const [solarParticleSize, setSolarParticleSize] = useState(0.12);
   const [solarParticleOpacity, setSolarParticleOpacity] = useState(0.5);
+  const [solarColors, setSolarColors] = useState<Record<string, string>>({
+    MBA: "#888888", TJN: "#66aa66", NEO: "#ff4444",
+    TNO: "#6688cc", CEN: "#bb88dd", HTC: "#88ccff", JFC: "#aaddaa",
+  });
 
   const { isMobile } = useIsMobile();
 
@@ -335,6 +339,7 @@ export default function App() {
           visibleClasses={solarVisibleClasses}
           particleSize={solarParticleSize}
           particleOpacity={solarParticleOpacity}
+          classColors={solarColors}
         />
       )}
 
@@ -406,6 +411,8 @@ export default function App() {
           onParticleSizeChange={setSolarParticleSize}
           particleOpacity={solarParticleOpacity}
           onParticleOpacityChange={setSolarParticleOpacity}
+          colors={solarColors}
+          onColorChange={(cls, color) => setSolarColors((prev) => ({ ...prev, [cls]: color }))}
           isMobile={isMobile}
         />
       )}
