@@ -118,6 +118,7 @@ export default function App() {
   });
   const [selectedBody, setSelectedBody] = useState<string | null>(null);
   const [bodyCardExpanded, setBodyCardExpanded] = useState(false);
+  const [pickedSmallBody, setPickedSmallBody] = useState<import("./data/smallBodyLoader").SmallBody | null>(null);
 
   const { isMobile } = useIsMobile();
 
@@ -343,7 +344,7 @@ export default function App() {
           particleSize={solarParticleSize}
           particleOpacity={solarParticleOpacity}
           classColors={solarColors}
-          onBodyClick={(name) => { setSelectedBody(name); setBodyCardExpanded(false); }}
+          onBodyClick={(name, sb) => { setSelectedBody(name); setBodyCardExpanded(false); setPickedSmallBody(sb ?? null); }}
           selectedBody={selectedBody}
         />
       )}
@@ -655,7 +656,20 @@ export default function App() {
       {/* 太陽系天體資訊卡 */}
       {viewMode === "solar" && selectedBody && (() => {
         const info = getSolarBodyInfo(selectedBody);
-        if (!info) return null;
+        const sb = pickedSmallBody;
+        const isSmallBody = selectedBody.startsWith("sb_") && sb;
+
+        // 必須有 info 或 smallBody 才顯示
+        if (!info && !isSmallBody) return null;
+
+        const cardTitle = isSmallBody ? sb.name : info!.label;
+        const cardSub = isSmallBody
+          ? (sb.class === "HTC" ? "哈雷型彗星" : "木星族彗星")
+          : info!.zhName;
+        const cardDesc = isSmallBody
+          ? `${sb.class === "HTC" ? "Halley-type Comet" : "Jupiter-family Comet"}`
+          : `${getTypeLabel(info!.type)} · ${info!.desc}`;
+
         return (
           <div style={{
             position: "absolute", zIndex: 10,
@@ -675,15 +689,15 @@ export default function App() {
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 8 }}>
                 <div style={{ flex: 1 }}>
                   <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                    <span style={{ fontSize: 16, fontWeight: 700 }}>{info.label}</span>
+                    <span style={{ fontSize: 16, fontWeight: 700 }}>{cardTitle}</span>
                   </div>
-                  <div style={{ fontSize: 13, color: "rgba(255,255,255,0.45)", marginTop: 4 }}>{info.zhName}</div>
+                  <div style={{ fontSize: 13, color: "rgba(255,255,255,0.45)", marginTop: 4 }}>{cardSub}</div>
                 </div>
                 <div style={{ display: "flex", gap: 4, flexShrink: 0 }}>
                   <div style={{ width: 24, height: 24, display: "flex", alignItems: "center", justifyContent: "center", color: "rgba(255,255,255,0.4)" }}>
                     {bodyCardExpanded ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
                   </div>
-                  <button onClick={(e) => { e.stopPropagation(); setSelectedBody(null); }} style={{
+                  <button onClick={(e) => { e.stopPropagation(); setSelectedBody(null); setPickedSmallBody(null); }} style={{
                     width: 24, height: 24, display: "flex", alignItems: "center", justifyContent: "center",
                     background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.06)", borderRadius: 6,
                     color: "rgba(255,255,255,0.4)", cursor: "pointer", padding: 0, flexShrink: 0,
@@ -692,27 +706,33 @@ export default function App() {
                   </button>
                 </div>
               </div>
-              <div style={{ fontSize: 12, color: "rgba(255,255,255,0.5)", marginTop: 4 }}>
-                {getTypeLabel(info.type)} · {info.desc}
-              </div>
+              <div style={{ fontSize: 12, color: "rgba(255,255,255,0.5)", marginTop: 4 }}>{cardDesc}</div>
             </div>
 
             {/* Card Body */}
             {bodyCardExpanded && (<>
               <div style={{ height: 1, background: "rgba(255,255,255,0.06)" }} />
               <div style={{ padding: "12px 20px 16px", display: "flex", flexDirection: "column", gap: 10 }}>
-                {info.radiusKm && <InfoRow label="Radius" value={`${info.radiusKm.toLocaleString()} km`} />}
-                {info.distanceAU != null && <InfoRow label="Distance" value={`${info.distanceAU} AU`} />}
-                {info.orbitalPeriod && <InfoRow label="Orbit" value={info.orbitalPeriod} />}
-                {info.moons != null && <InfoRow label="Moons" value={String(info.moons)} />}
-                {info.temperature && <InfoRow label="Temp" value={info.temperature} />}
-                {info.atmosphere && <InfoRow label="Atmos" value={info.atmosphere} />}
-                {info.note && (
-                  <>
-                    <div style={{ height: 1, background: "rgba(255,255,255,0.06)", margin: "2px 0" }} />
-                    <div style={{ fontSize: 12, color: "rgba(255,255,255,0.5)", lineHeight: 1.6 }}>{info.note}</div>
-                  </>
-                )}
+                {isSmallBody ? (<>
+                  <InfoRow label="Semi-major" value={`${sb.a.toFixed(3)} AU`} />
+                  <InfoRow label="Eccentricity" value={sb.e.toFixed(4)} />
+                  <InfoRow label="Inclination" value={`${sb.i.toFixed(2)}°`} />
+                  <InfoRow label="Period" value={`${(sb.period_days / 365.25).toFixed(1)} years`} />
+                  <InfoRow label="Class" value={sb.class} />
+                </>) : (<>
+                  {info!.radiusKm && <InfoRow label="Radius" value={`${info!.radiusKm.toLocaleString()} km`} />}
+                  {info!.distanceAU != null && <InfoRow label="Distance" value={`${info!.distanceAU} AU`} />}
+                  {info!.orbitalPeriod && <InfoRow label="Orbit" value={info!.orbitalPeriod} />}
+                  {info!.moons != null && <InfoRow label="Moons" value={String(info!.moons)} />}
+                  {info!.temperature && <InfoRow label="Temp" value={info!.temperature} />}
+                  {info!.atmosphere && <InfoRow label="Atmos" value={info!.atmosphere} />}
+                  {info!.note && (
+                    <>
+                      <div style={{ height: 1, background: "rgba(255,255,255,0.06)", margin: "2px 0" }} />
+                      <div style={{ fontSize: 12, color: "rgba(255,255,255,0.5)", lineHeight: 1.6 }}>{info!.note}</div>
+                    </>
+                  )}
+                </>)}
               </div>
             </>)}
           </div>

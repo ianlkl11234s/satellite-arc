@@ -19,7 +19,7 @@ export interface SolarSystemViewProps {
   particleSize: number;
   particleOpacity: number;
   classColors?: Record<string, string>;
-  onBodyClick?: (name: string | null) => void;
+  onBodyClick?: (name: string | null, smallBody?: SmallBody | null) => void;
   selectedBody?: string | null;
 }
 
@@ -46,7 +46,7 @@ export function SolarSystemView({
         e.clientX - rect.left, e.clientY - rect.top,
         rect.width, rect.height,
       );
-      onClickRef.current?.(body);
+      onClickRef.current?.(body, solar.lastPickedSmallBody);
     };
     canvas.addEventListener("click", onClick);
 

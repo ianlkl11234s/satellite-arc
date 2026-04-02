@@ -364,6 +364,9 @@ export class SolarSystemScene {
   /* ── Pick & Fly ──────────────────────────── */
 
   /** 螢幕座標 → 找最近的天體 */
+  /** 最後一次 pick 到的小天體（HTC/JFC 粒子） */
+  lastPickedSmallBody: SmallBody | null = null;
+
   pickBody(screenX: number, screenY: number, viewWidth: number, viewHeight: number): string | null {
     const mvp = new THREE.Matrix4().multiplyMatrices(
       this.camera.projectionMatrix,
@@ -372,19 +375,14 @@ export class SolarSystemScene {
     const v = new THREE.Vector4();
     let closest: string | null = null;
     let closestDist = 40; // 像素閾值
+    this.lastPickedSmallBody = null;
 
-    // 檢查所有可點擊天體
+    // 檢查所有可點擊天體（行星、彗星等）
     const candidates: Array<{ name: string; pos: THREE.Vector3 }> = [];
-
-    // 太陽
     candidates.push({ name: "sun", pos: this.sun.group.position });
-    // 行星
     for (const [name, mesh] of this.planets) candidates.push({ name, pos: mesh.group.position });
-    // 月球
     candidates.push({ name: "moon", pos: this.moon.group.position });
-    // 彗星
     for (const [name, mesh] of this.comets) candidates.push({ name, pos: mesh.group.position });
-    // 矮行星
     for (const [name, mesh] of this.dwarfPlanets) candidates.push({ name, pos: mesh.group.position });
 
     for (const { name, pos } of candidates) {
@@ -398,6 +396,28 @@ export class SolarSystemScene {
         closest = name;
       }
     }
+
+    // 也掃描 HTC/JFC 粒子
+    for (const cls of ["HTC", "JFC"]) {
+      const cloud = this.smallBodyClouds.get(cls);
+      if (!cloud || !cloud.points.visible) continue;
+      const { bodies, posArr } = cloud;
+      for (let i = 0; i < bodies.length; i++) {
+        const px = posArr[i * 3], py = posArr[i * 3 + 1], pz = posArr[i * 3 + 2];
+        if (px > 9000) continue; // 被過濾的無效點
+        v.set(px, py, pz, 1).applyMatrix4(mvp);
+        if (v.w <= 0) continue;
+        const sx = ((v.x / v.w) * 0.5 + 0.5) * viewWidth;
+        const sy = ((-v.y / v.w) * 0.5 + 0.5) * viewHeight;
+        const dist = Math.sqrt((sx - screenX) ** 2 + (sy - screenY) ** 2);
+        if (dist < closestDist) {
+          closestDist = dist;
+          closest = `sb_${cls}_${i}`;
+          this.lastPickedSmallBody = bodies[i];
+        }
+      }
+    }
+
     return closest;
   }
 
