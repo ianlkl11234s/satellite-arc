@@ -83,7 +83,13 @@ export class SolarSystemScene {
   private dwarfPlanets: Map<string, PlanetMesh> = new Map();
 
   // 真實小天體粒子雲（替換假的 asteroidBelt）
-  private smallBodyClouds: Map<string, { points: THREE.Points; bodies: SmallBody[]; posArr: Float32Array }> = new Map();
+  // posArr = 當前顯示位置, targetArr = 下一個計算目標, prevArr = 上一個計算結果
+  private smallBodyClouds: Map<string, {
+    points: THREE.Points; bodies: SmallBody[];
+    posArr: Float32Array; prevArr: Float32Array; targetArr: Float32Array;
+  }> = new Map();
+  private sbLerpT = 0;          // 內插進度 0..1
+  private sbUpdateInterval = 60; // 每 N 幀計算一次目標位置
 
   private animId = 0;
   private clock = new THREE.Clock();
@@ -304,9 +310,13 @@ export class SolarSystemScene {
       if (pos) this.dwarfPlanets.get(dwarf.name)?.setPosition(pos[0], pos[1], pos[2]);
     }
 
-    // 每 120 幀更新真實小天體位置（數量多，計算重）
-    if (this.frameCount % 120 === 0 && this.smallBodyClouds.size > 0) {
-      this.updateSmallBodyPositions(dateMs);
+    // 小天體：每 N 幀計算目標位置，每幀 lerp 平滑過渡
+    if (this.smallBodyClouds.size > 0) {
+      if (this.frameCount % this.sbUpdateInterval === 0) {
+        this.computeSmallBodyTargets(dateMs);
+      }
+      this.sbLerpT += 1 / this.sbUpdateInterval;
+      this.lerpSmallBodies();
     }
 
     // 月球位置 = 地球位置 + 偏移
@@ -397,9 +407,11 @@ export class SolarSystemScene {
       NEO: 0xff4444, // 紅
       TNO: 0x6688cc, // 藍
       CEN: 0xbb88dd, // 紫
+      HTC: 0x88ccff, // 淡藍
+      JFC: 0xaaddaa, // 淡綠
     };
     const SIZES: Record<string, number> = {
-      MBA: 0.1, TJN: 0.12, NEO: 0.15, TNO: 0.1, CEN: 0.2,
+      MBA: 0.1, TJN: 0.12, NEO: 0.15, TNO: 0.1, CEN: 0.2, HTC: 0.25, JFC: 0.2,
     };
 
     for (const [cls, bodies] of Object.entries(grouped)) {
@@ -407,6 +419,8 @@ export class SolarSystemScene {
       if (count === 0) continue;
 
       const posArr = new Float32Array(count * 3);
+      const prevArr = new Float32Array(count * 3);
+      const targetArr = new Float32Array(count * 3);
       const geo = new THREE.BufferGeometry();
       geo.setAttribute("position", new THREE.BufferAttribute(posArr, 3));
       (geo.attributes.position as THREE.BufferAttribute).setUsage(THREE.DynamicDrawUsage);
@@ -422,42 +436,61 @@ export class SolarSystemScene {
 
       const points = new THREE.Points(geo, mat);
       this.scene.add(points);
-      this.smallBodyClouds.set(cls, { points, bodies, posArr });
+      this.smallBodyClouds.set(cls, { points, bodies, posArr, prevArr, targetArr });
     }
 
-    // 立即計算一次位置
-    this.updateSmallBodyPositions(this.getCurrentTime() * 1000);
+    // 立即計算初始位置（填滿 prev + target + posArr）
+    const initMs = this.getCurrentTime() * 1000;
+    this.computeSmallBodyTargets(initMs);
+    // 初始化 prev = target（第一幀不需要 lerp）
+    for (const cloud of this.smallBodyClouds.values()) {
+      cloud.prevArr.set(cloud.targetArr);
+      cloud.posArr.set(cloud.targetArr);
+      (cloud.points.geometry.attributes.position as THREE.BufferAttribute).needsUpdate = true;
+    }
+    this.sbLerpT = 1;
   }
 
-  private updateSmallBodyPositions(dateMs: number) {
+  /** 計算目標位置（寫入 targetArr），並把 posArr 複製到 prevArr */
+  private computeSmallBodyTargets(dateMs: number) {
     const DEG2RAD = Math.PI / 180;
     const TWO_PI = 2 * Math.PI;
     const JD_UNIX_EPOCH = 2440587.5;
 
-    for (const { bodies, posArr, points } of this.smallBodyClouds.values()) {
+    for (const cloud of this.smallBodyClouds.values()) {
+      const { bodies, posArr, prevArr, targetArr } = cloud;
+
+      // 把當前位置存為 prev（供 lerp 用）
+      prevArr.set(posArr);
+
       for (let idx = 0; idx < bodies.length; idx++) {
         const b = bodies[idx];
+        const i3 = idx * 3;
 
-        // NaN / 無效值防護
-        if (!isFinite(b.ma) || !isFinite(b.epoch_jd) || !isFinite(b.a) || b.e >= 1) {
-          posArr[idx * 3] = posArr[idx * 3 + 1] = posArr[idx * 3 + 2] = 0;
+        // 過濾無效 / 數值不穩定的天體
+        if (!isFinite(b.ma) || !isFinite(b.epoch_jd) || !isFinite(b.a) ||
+            b.e >= 0.98 || b.a <= 0 || b.period_days <= 0) {
+          targetArr[i3] = targetArr[i3 + 1] = targetArr[i3 + 2] = 9999;
           continue;
         }
 
-        // 從 epoch JD 到 dateMs 的天數
         const epochMs = (b.epoch_jd - JD_UNIX_EPOCH) * 86400000;
         const days = (dateMs - epochMs) / 86400000;
 
-        // 平近點角
         const n = b.period_days > 0 ? TWO_PI / b.period_days : 0;
         let M = (b.ma * DEG2RAD + n * days) % TWO_PI;
         if (M < 0) M += TWO_PI;
 
-        // Kepler（高離心率需要更多迭代）
         const iters = b.e > 0.4 ? 8 : 3;
         let E = M;
         for (let j = 0; j < iters; j++) {
           E -= (E - b.e * Math.sin(E) - M) / (1 - b.e * Math.cos(E));
+        }
+
+        // Kepler 發散檢查
+        if (!isFinite(E)) {
+          targetArr[i3] = targetArr[i3 + 1] = targetArr[i3 + 2] = 9999;
+          continue;
         }
 
         const cosE = Math.cos(E), sinE = Math.sin(E);
@@ -479,9 +512,20 @@ export class SolarSystemScene {
         const r = auToScene(dist);
         const scale = r / (dist || 1);
 
-        posArr[idx * 3] = xEcl * scale;
-        posArr[idx * 3 + 1] = zEcl * scale;
-        posArr[idx * 3 + 2] = -yEcl * scale;
+        targetArr[i3] = xEcl * scale;
+        targetArr[i3 + 1] = zEcl * scale;
+        targetArr[i3 + 2] = -yEcl * scale;
+      }
+    }
+    this.sbLerpT = 0;
+  }
+
+  /** 每幀呼叫：在 prev 和 target 之間 lerp */
+  private lerpSmallBodies() {
+    const t = Math.min(this.sbLerpT, 1);
+    for (const { posArr, prevArr, targetArr, points } of this.smallBodyClouds.values()) {
+      for (let k = 0; k < posArr.length; k++) {
+        posArr[k] = prevArr[k] + (targetArr[k] - prevArr[k]) * t;
       }
       (points.geometry.attributes.position as THREE.BufferAttribute).needsUpdate = true;
     }

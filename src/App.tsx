@@ -16,7 +16,7 @@ import { ViewModeToggle, type ViewMode } from "./components/ViewModeToggle";
 import { Play, Pause, X, LocateFixed, ChevronDown, ChevronUp } from "lucide-react";
 
 const SPEED_OPTIONS = [10, 60, 300, 600];
-const SOLAR_SPEED_OPTIONS = [600, 3600, 86400, 604800]; // 10min, 1hr, 1day, 1week per second
+const SOLAR_SPEED_OPTIONS = [600, 3600, 86400, 604800, 2592000]; // 10min, 1hr, 1day, 1week, 1month per second
 const FONT = "'Inter', sans-serif";
 const ALL_CATEGORIES = Object.keys(CATEGORIES);
 
@@ -108,7 +108,7 @@ export default function App() {
   const [solarShowLabels, setSolarShowLabels] = useState(true);
   const [solarShowOrbits, setSolarShowOrbits] = useState(true);
   const [solarShowAsteroidBelt, setSolarShowAsteroidBelt] = useState(true);
-  const [solarVisibleClasses, setSolarVisibleClasses] = useState<Record<string, boolean>>({ MBA: true, TJN: true, NEO: true, TNO: true, CEN: true });
+  const [solarVisibleClasses, setSolarVisibleClasses] = useState<Record<string, boolean>>({ MBA: true, TJN: true, NEO: true, TNO: true, CEN: true, HTC: true, JFC: true });
   const [solarParticleSize, setSolarParticleSize] = useState(0.12);
   const [solarParticleOpacity, setSolarParticleOpacity] = useState(0.5);
 
@@ -690,7 +690,8 @@ export default function App() {
           {(viewMode === "earth" ? SPEED_OPTIONS : SOLAR_SPEED_OPTIONS).map((s) => {
             const label = viewMode === "earth"
               ? `${s}x`
-              : s >= 604800 ? `${s / 604800}w/s`
+              : s >= 2592000 ? `${Math.round(s / 2592000)}mo/s`
+              : s >= 604800 ? `${Math.round(s / 604800)}w/s`
               : s >= 86400 ? `${s / 86400}d/s`
               : s >= 3600 ? `${s / 3600}h/s`
               : `${Math.round(s / 60)}m/s`;

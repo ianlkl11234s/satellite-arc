@@ -55,7 +55,7 @@ export async function loadSmallBodies(bodyClass?: string): Promise<SmallBody[]> 
 
 /** 依類別平行載入所有小天體（避免單次 limit 截斷） */
 export async function loadAllSmallBodies(): Promise<Record<string, SmallBody[]>> {
-  const classes = ["MBA", "TJN", "NEO", "TNO", "CEN"];
+  const classes = ["MBA", "TJN", "NEO", "TNO", "CEN", "HTC", "JFC"];
   const results = await Promise.all(classes.map((cls) => loadSmallBodies(cls)));
   const grouped: Record<string, SmallBody[]> = {};
   for (let i = 0; i < classes.length; i++) {

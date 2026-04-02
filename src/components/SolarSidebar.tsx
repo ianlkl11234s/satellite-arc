@@ -31,6 +31,8 @@ const SMALL_BODY_CLASSES = [
   { key: "NEO", label: "Near-Earth Objects", color: "#ff4444" },
   { key: "TNO", label: "Kuiper Belt (TNOs)", color: "#6688cc" },
   { key: "CEN", label: "Centaurs", color: "#bb88dd" },
+  { key: "HTC", label: "Halley-type Comets", color: "#88ccff" },
+  { key: "JFC", label: "Jupiter-family Comets", color: "#aaddaa" },
 ];
 
 /* ── Sub-components ─────────────────────────── */
