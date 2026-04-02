@@ -475,17 +475,32 @@ export class SolarSystemScene {
 
   /* ── Setter methods ─────────────────────── */
 
-  setOrbitOpacity(opacity: number) {
+  /* ── 軌道路徑控制（分三組） ── */
+
+  setPlanetOrbitOpacity(opacity: number) {
     for (const orbit of this.orbits) orbit.setOpacity(opacity);
     for (const orbit of this.cometOrbits) orbit.setOpacity(opacity * 0.5);
-    for (const orbit of this.sbCometOrbits) orbit.setOpacity(opacity * 0.3);
   }
-
-  setShowOrbits(show: boolean) {
+  setShowPlanetOrbits(show: boolean) {
     for (const orbit of this.orbits) orbit.setVisible(show);
     for (const orbit of this.cometOrbits) orbit.setVisible(show);
-    for (const orbit of this.sbCometOrbits) orbit.setVisible(show);
   }
+
+  private _htcOrbitCount = 0;
+  setHTCOrbitOpacity(opacity: number) {
+    for (let i = 0; i < this._htcOrbitCount; i++) this.sbCometOrbits[i]?.setOpacity(opacity);
+  }
+  setShowHTCOrbits(show: boolean) {
+    for (let i = 0; i < this._htcOrbitCount; i++) this.sbCometOrbits[i]?.setVisible(show);
+  }
+  setJFCOrbitOpacity(opacity: number) {
+    for (let i = this._htcOrbitCount; i < this.sbCometOrbits.length; i++) this.sbCometOrbits[i]?.setOpacity(opacity);
+  }
+  setShowJFCOrbits(show: boolean) {
+    for (let i = this._htcOrbitCount; i < this.sbCometOrbits.length; i++) this.sbCometOrbits[i]?.setVisible(show);
+  }
+
+  /* ── 行星/粒子視覺控制 ── */
 
   setPlanetScale(scale: number) {
     for (const mesh of this.planets.values()) mesh.setScale(scale);
@@ -493,45 +508,34 @@ export class SolarSystemScene {
     for (const mesh of this.dwarfPlanets.values()) mesh.setScale(scale);
     this.moon.group.scale.setScalar(scale);
   }
-
   setGlowOpacity(opacity: number) {
     for (const mesh of this.planets.values()) mesh.setGlowOpacity(opacity);
     for (const mesh of this.comets.values()) mesh.setGlowOpacity(opacity);
     for (const mesh of this.dwarfPlanets.values()) mesh.setGlowOpacity(opacity);
   }
-
   setShowLabels(show: boolean) {
     this.labelRenderer.domElement.style.display = show ? "" : "none";
   }
-
   setShowAsteroidBelt(show: boolean) {
     if (this.asteroidBelt) this.asteroidBelt.visible = show;
   }
-
   setClassVisibility(cls: string, visible: boolean) {
     const cloud = this.smallBodyClouds.get(cls);
     if (cloud) cloud.points.visible = visible;
   }
-
-  setParticleSize(size: number) {
-    for (const { points } of this.smallBodyClouds.values()) {
-      (points.material as THREE.PointsMaterial).size = size;
-    }
-    if (this.asteroidBelt) (this.asteroidBelt.material as THREE.PointsMaterial).size = size;
-  }
-
   setClassColors(colors: Record<string, string>) {
     for (const [cls, { points }] of this.smallBodyClouds.entries()) {
       const hex = colors[cls];
       if (hex) (points.material as THREE.PointsMaterial).color.set(hex);
     }
   }
-
-  setParticleOpacity(opacity: number) {
-    for (const { points } of this.smallBodyClouds.values()) {
-      (points.material as THREE.PointsMaterial).opacity = opacity;
-    }
-    if (this.asteroidBelt) (this.asteroidBelt.material as THREE.PointsMaterial).opacity = opacity;
+  setClassSize(cls: string, size: number) {
+    const cloud = this.smallBodyClouds.get(cls);
+    if (cloud) (cloud.points.material as THREE.PointsMaterial).size = size;
+  }
+  setClassOpacity(cls: string, opacity: number) {
+    const cloud = this.smallBodyClouds.get(cls);
+    if (cloud) (cloud.points.material as THREE.PointsMaterial).opacity = opacity;
   }
 
   /** 設定真實小天體資料（來自 Supabase），替換假的粒子 */
@@ -605,6 +609,7 @@ export class SolarSystemScene {
     this.sbCometOrbits = [];
 
     for (const cls of ["HTC", "JFC"]) {
+      if (cls === "JFC") this._htcOrbitCount = this.sbCometOrbits.length;
       const bodies = grouped[cls];
       if (!bodies) continue;
       const color = COLORS[cls] ?? 0x888888;

@@ -103,15 +103,21 @@ export default function App() {
   const [smallBodies, setSmallBodies] = useState<Record<string, SmallBody[]> | undefined>(undefined);
 
   // 太陽系參數
-  const [solarOrbitOpacity, setSolarOrbitOpacity] = useState(0.3);
   const [solarPlanetScale, setSolarPlanetScale] = useState(1.0);
   const [solarGlowOpacity, setSolarGlowOpacity] = useState(0.6);
   const [solarShowLabels, setSolarShowLabels] = useState(true);
-  const [solarShowOrbits, setSolarShowOrbits] = useState(true);
-  const [solarShowAsteroidBelt, setSolarShowAsteroidBelt] = useState(true);
+  const [solarShowAsteroidBelt] = useState(true);
   const [solarVisibleClasses, setSolarVisibleClasses] = useState<Record<string, boolean>>({ MBA: true, TJN: true, NEO: true, TNO: true, CEN: true, HTC: true, JFC: true });
-  const [solarParticleSize, setSolarParticleSize] = useState(0.12);
-  const [solarParticleOpacity, setSolarParticleOpacity] = useState(0.5);
+  // 軌道分組
+  const [showPlanetOrbits, setShowPlanetOrbits] = useState(true);
+  const [planetOrbitOpacity, setPlanetOrbitOpacity] = useState(0.8);
+  const [showHTCOrbits, setShowHTCOrbits] = useState(false);
+  const [htcOrbitOpacity, setHTCOrbitOpacity] = useState(0.1);
+  const [showJFCOrbits, setShowJFCOrbits] = useState(false);
+  const [jfcOrbitOpacity, setJFCOrbitOpacity] = useState(0.1);
+  // 每類粒子設定
+  const [classSizes, setClassSizes] = useState<Record<string, number>>({ MBA: 0.08, TJN: 0.1, NEO: 0.12, TNO: 0.08, CEN: 0.15, HTC: 0.2, JFC: 0.18 });
+  const [classOpacities, setClassOpacities] = useState<Record<string, number>>({ MBA: 0.4, TJN: 0.5, NEO: 0.5, TNO: 0.4, CEN: 0.6, HTC: 0.7, JFC: 0.6 });
   const [solarColors, setSolarColors] = useState<Record<string, string>>({
     MBA: "#888888", TJN: "#66aa66", NEO: "#ff4444",
     TNO: "#6688cc", CEN: "#bb88dd", HTC: "#88ccff", JFC: "#aaddaa",
@@ -333,16 +339,20 @@ export default function App() {
       ) : (
         <SolarSystemView
           getCurrentTime={getCurrentTime}
-          orbitOpacity={solarOrbitOpacity}
           planetScale={solarPlanetScale}
           glowOpacity={solarGlowOpacity}
           showLabels={solarShowLabels}
-          showOrbits={solarShowOrbits}
           showAsteroidBelt={solarShowAsteroidBelt}
+          showPlanetOrbits={showPlanetOrbits}
+          planetOrbitOpacity={planetOrbitOpacity}
+          showHTCOrbits={showHTCOrbits}
+          htcOrbitOpacity={htcOrbitOpacity}
+          showJFCOrbits={showJFCOrbits}
+          jfcOrbitOpacity={jfcOrbitOpacity}
           smallBodies={smallBodies}
           visibleClasses={solarVisibleClasses}
-          particleSize={solarParticleSize}
-          particleOpacity={solarParticleOpacity}
+          classSizes={classSizes}
+          classOpacities={classOpacities}
           classColors={solarColors}
           onBodyClick={(name, sb) => { setSelectedBody(name); setBodyCardExpanded(false); setPickedSmallBody(sb ?? null); }}
           selectedBody={selectedBody}
@@ -398,25 +408,31 @@ export default function App() {
       {/* Solar System Sidebar */}
       {viewMode === "solar" && (
         <SolarSidebar
-          orbitOpacity={solarOrbitOpacity}
-          onOrbitOpacityChange={setSolarOrbitOpacity}
           planetScale={solarPlanetScale}
           onPlanetScaleChange={setSolarPlanetScale}
           glowOpacity={solarGlowOpacity}
           onGlowOpacityChange={setSolarGlowOpacity}
           showLabels={solarShowLabels}
           onShowLabelsChange={setSolarShowLabels}
-          showOrbits={solarShowOrbits}
-          onShowOrbitsChange={setSolarShowOrbits}
-          showAsteroidBelt={solarShowAsteroidBelt}
-          onShowAsteroidBeltChange={setSolarShowAsteroidBelt}
+          showPlanetOrbits={showPlanetOrbits}
+          onShowPlanetOrbitsChange={setShowPlanetOrbits}
+          planetOrbitOpacity={planetOrbitOpacity}
+          onPlanetOrbitOpacityChange={setPlanetOrbitOpacity}
+          showHTCOrbits={showHTCOrbits}
+          onShowHTCOrbitsChange={setShowHTCOrbits}
+          htcOrbitOpacity={htcOrbitOpacity}
+          onHTCOrbitOpacityChange={setHTCOrbitOpacity}
+          showJFCOrbits={showJFCOrbits}
+          onShowJFCOrbitsChange={setShowJFCOrbits}
+          jfcOrbitOpacity={jfcOrbitOpacity}
+          onJFCOrbitOpacityChange={setJFCOrbitOpacity}
           visibleClasses={solarVisibleClasses}
           onToggleClass={(cls) => setSolarVisibleClasses((prev) => ({ ...prev, [cls]: !prev[cls] }))}
           classCounts={smallBodies ? Object.fromEntries(Object.entries(smallBodies).map(([k, v]) => [k, v.length])) : {}}
-          particleSize={solarParticleSize}
-          onParticleSizeChange={setSolarParticleSize}
-          particleOpacity={solarParticleOpacity}
-          onParticleOpacityChange={setSolarParticleOpacity}
+          classSizes={classSizes}
+          onClassSizeChange={(cls, v) => setClassSizes((prev) => ({ ...prev, [cls]: v }))}
+          classOpacities={classOpacities}
+          onClassOpacityChange={(cls, v) => setClassOpacities((prev) => ({ ...prev, [cls]: v }))}
           colors={solarColors}
           onColorChange={(cls, color) => setSolarColors((prev) => ({ ...prev, [cls]: color }))}
           isMobile={isMobile}
