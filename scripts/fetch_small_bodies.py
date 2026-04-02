@@ -37,7 +37,7 @@ FIELDS = "full_name,e,a,i,om,w,ma,epoch"
 
 # 各類別抓取配置：(class, sb-class, limit)
 CATEGORIES = [
-    ("MBA", "MBA", 5000),     # 主帶小行星（取樣）
+    ("MBA", "MBA", 40000),    # 主帶小行星（取樣 40k）
     ("TJN", "TJN", 20000),    # 木星特洛伊（全撈）
     ("NEO", "APO", 25000),    # 近地天體 Apollo 型（全撈）
     ("TNO", "TNO", 10000),    # 海王星外天體（全撈）
