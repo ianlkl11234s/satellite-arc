@@ -81,6 +81,7 @@ export class SolarSystemScene {
   private comets: Map<string, PlanetMesh> = new Map();
   private cometOrbits: OrbitPath[] = [];
   private dwarfPlanets: Map<string, PlanetMesh> = new Map();
+  private sbCometOrbits: OrbitPath[] = []; // HTC/JFC from Supabase
 
   // 真實小天體粒子雲（替換假的 asteroidBelt）
   // posArr = 當前顯示位置, targetArr = 下一個計算目標, prevArr = 上一個計算結果
@@ -94,8 +95,12 @@ export class SolarSystemScene {
   private animId = 0;
   private clock = new THREE.Clock();
 
-  // 預分配的位置快取，避免每幀 new
+  // 行星/彗星/矮行星位置快取（雙快取 lerp）
   private posCache: Map<string, [number, number, number]> = new Map();
+  private posPrev: Map<string, [number, number, number]> = new Map();
+  private posTarget: Map<string, [number, number, number]> = new Map();
+  private planetLerpT = 1;
+  private readonly PLANET_UPDATE_INTERVAL = 30;
 
   getCurrentTime: () => number = () => Date.now() / 1000;
 
@@ -162,9 +167,11 @@ export class SolarSystemScene {
       const orbit = new OrbitPath(this.scene, points, planet.color);
       this.orbits.push(orbit);
 
-      // 初始位置
+      // 初始位置（三份：cache, prev, target）
       const pos = getPlanetPosition(planet, now);
-      this.posCache.set(planet.name, pos);
+      this.posCache.set(planet.name, [...pos]);
+      this.posPrev.set(planet.name, [...pos]);
+      this.posTarget.set(planet.name, [...pos]);
       mesh.setPosition(pos[0], pos[1], pos[2]);
     }
 
@@ -188,7 +195,10 @@ export class SolarSystemScene {
       this.scene.add(mesh.group);
 
       const pos = getCometPosition(comet, now);
-      this.posCache.set(`comet_${comet.name}`, pos);
+      const ckey = `comet_${comet.name}`;
+      this.posCache.set(ckey, [...pos]);
+      this.posPrev.set(ckey, [...pos]);
+      this.posTarget.set(ckey, [...pos]);
       mesh.setPosition(pos[0], pos[1], pos[2]);
 
       // 彗星軌道（虛線效果用不同顏色和更低透明度）
@@ -211,7 +221,10 @@ export class SolarSystemScene {
       this.scene.add(mesh.group);
 
       const pos = getDwarfPlanetPosition(dwarf, now);
-      this.posCache.set(`dwarf_${dwarf.name}`, pos);
+      const dkey = `dwarf_${dwarf.name}`;
+      this.posCache.set(dkey, [...pos]);
+      this.posPrev.set(dkey, [...pos]);
+      this.posTarget.set(dkey, [...pos]);
       mesh.setPosition(pos[0], pos[1], pos[2]);
 
       // 矮行星軌道
@@ -275,28 +288,44 @@ export class SolarSystemScene {
     // 太陽脈動動畫
     this.sun.update(elapsed);
 
-    // 每 30 幀更新一次位置（天體移動極慢）
-    if (this.frameCount % 30 === 0) {
+    // 行星/彗星/矮行星：每 N 幀計算目標，每幀 lerp
+    if (this.frameCount % this.PLANET_UPDATE_INTERVAL === 0) {
+      // 把當前位置存為 prev，計算新 target
+      for (const key of this.posCache.keys()) {
+        const cur = this.posCache.get(key)!;
+        const prev = this.posPrev.get(key)!;
+        prev[0] = cur[0]; prev[1] = cur[1]; prev[2] = cur[2];
+      }
       for (const planet of PLANETS) {
         const pos = getPlanetPosition(planet, dateMs);
-        const cached = this.posCache.get(planet.name)!;
-        cached[0] = pos[0]; cached[1] = pos[1]; cached[2] = pos[2];
+        const t = this.posTarget.get(planet.name)!;
+        t[0] = pos[0]; t[1] = pos[1]; t[2] = pos[2];
       }
       for (const comet of COMETS) {
         const pos = getCometPosition(comet, dateMs);
-        const key = `comet_${comet.name}`;
-        const cached = this.posCache.get(key);
-        if (cached) { cached[0] = pos[0]; cached[1] = pos[1]; cached[2] = pos[2]; }
+        const t = this.posTarget.get(`comet_${comet.name}`);
+        if (t) { t[0] = pos[0]; t[1] = pos[1]; t[2] = pos[2]; }
       }
       for (const dwarf of DWARF_PLANETS) {
         const pos = getDwarfPlanetPosition(dwarf, dateMs);
-        const key = `dwarf_${dwarf.name}`;
-        const cached = this.posCache.get(key);
-        if (cached) { cached[0] = pos[0]; cached[1] = pos[1]; cached[2] = pos[2]; }
+        const t = this.posTarget.get(`dwarf_${dwarf.name}`);
+        if (t) { t[0] = pos[0]; t[1] = pos[1]; t[2] = pos[2]; }
       }
+      this.planetLerpT = 0;
     }
 
-    // 每幀套用位置
+    // 每幀 lerp 並套用
+    this.planetLerpT = Math.min(this.planetLerpT + 1 / this.PLANET_UPDATE_INTERVAL, 1);
+    const pt = this.planetLerpT;
+    for (const key of this.posCache.keys()) {
+      const c = this.posCache.get(key)!;
+      const p = this.posPrev.get(key)!;
+      const t = this.posTarget.get(key)!;
+      c[0] = p[0] + (t[0] - p[0]) * pt;
+      c[1] = p[1] + (t[1] - p[1]) * pt;
+      c[2] = p[2] + (t[2] - p[2]) * pt;
+    }
+
     for (const planet of PLANETS) {
       const pos = this.posCache.get(planet.name)!;
       this.planets.get(planet.name)!.setPosition(pos[0], pos[1], pos[2]);
@@ -332,16 +361,110 @@ export class SolarSystemScene {
     this.labelRenderer.render(this.scene, this.camera);
   };
 
+  /* ── Pick & Fly ──────────────────────────── */
+
+  /** 螢幕座標 → 找最近的天體 */
+  pickBody(screenX: number, screenY: number, viewWidth: number, viewHeight: number): string | null {
+    const mvp = new THREE.Matrix4().multiplyMatrices(
+      this.camera.projectionMatrix,
+      this.camera.matrixWorldInverse,
+    );
+    const v = new THREE.Vector4();
+    let closest: string | null = null;
+    let closestDist = 40; // 像素閾值
+
+    // 檢查所有可點擊天體
+    const candidates: Array<{ name: string; pos: THREE.Vector3 }> = [];
+
+    // 太陽
+    candidates.push({ name: "sun", pos: this.sun.group.position });
+    // 行星
+    for (const [name, mesh] of this.planets) candidates.push({ name, pos: mesh.group.position });
+    // 月球
+    candidates.push({ name: "moon", pos: this.moon.group.position });
+    // 彗星
+    for (const [name, mesh] of this.comets) candidates.push({ name, pos: mesh.group.position });
+    // 矮行星
+    for (const [name, mesh] of this.dwarfPlanets) candidates.push({ name, pos: mesh.group.position });
+
+    for (const { name, pos } of candidates) {
+      v.set(pos.x, pos.y, pos.z, 1).applyMatrix4(mvp);
+      if (v.w <= 0) continue;
+      const sx = ((v.x / v.w) * 0.5 + 0.5) * viewWidth;
+      const sy = ((-v.y / v.w) * 0.5 + 0.5) * viewHeight;
+      const dist = Math.sqrt((sx - screenX) ** 2 + (sy - screenY) ** 2);
+      if (dist < closestDist) {
+        closestDist = dist;
+        closest = name;
+      }
+    }
+    return closest;
+  }
+
+  /** 飛到指定天體 */
+  flyToBody(name: string) {
+    let target: THREE.Vector3 | null = null;
+
+    if (name === "sun") target = this.sun.group.position;
+    else if (name === "moon") target = this.moon.group.position;
+    else if (this.planets.has(name)) target = this.planets.get(name)!.group.position;
+    else if (this.comets.has(name)) target = this.comets.get(name)!.group.position;
+    else if (this.dwarfPlanets.has(name)) target = this.dwarfPlanets.get(name)!.group.position;
+
+    if (!target) return;
+
+    // 飛到天體附近（距離 = 到太陽距離的 30% + 5，確保看得到）
+    const dist = target.length();
+    const offset = Math.max(3, dist * 0.3 + 2);
+
+    // 相機目標移到天體位置
+    const tx = target.x;
+    const ty = target.y + offset * 0.5;
+    const tz = target.z + offset * 0.8;
+
+    this._animateCameraTo(tx, ty, tz, target.x, target.y, target.z);
+  }
+
+  private _cameraAnimId = 0;
+  private _animateCameraTo(cx: number, cy: number, cz: number, tx: number, ty: number, tz: number) {
+    cancelAnimationFrame(this._cameraAnimId);
+    const startPos = { x: this.camera.position.x, y: this.camera.position.y, z: this.camera.position.z };
+    const startTarget = { x: this.controls.target.x, y: this.controls.target.y, z: this.controls.target.z };
+    const duration = 1200;
+    const startTime = performance.now();
+
+    const step = () => {
+      const elapsed = performance.now() - startTime;
+      const t = Math.min(1, elapsed / duration);
+      const ease = 1 - Math.pow(1 - t, 3); // ease-out cubic
+      this.camera.position.set(
+        startPos.x + (cx - startPos.x) * ease,
+        startPos.y + (cy - startPos.y) * ease,
+        startPos.z + (cz - startPos.z) * ease,
+      );
+      this.controls.target.set(
+        startTarget.x + (tx - startTarget.x) * ease,
+        startTarget.y + (ty - startTarget.y) * ease,
+        startTarget.z + (tz - startTarget.z) * ease,
+      );
+      this.controls.update();
+      if (t < 1) this._cameraAnimId = requestAnimationFrame(step);
+    };
+    step();
+  }
+
   /* ── Setter methods ─────────────────────── */
 
   setOrbitOpacity(opacity: number) {
     for (const orbit of this.orbits) orbit.setOpacity(opacity);
     for (const orbit of this.cometOrbits) orbit.setOpacity(opacity * 0.5);
+    for (const orbit of this.sbCometOrbits) orbit.setOpacity(opacity * 0.3);
   }
 
   setShowOrbits(show: boolean) {
     for (const orbit of this.orbits) orbit.setVisible(show);
     for (const orbit of this.cometOrbits) orbit.setVisible(show);
+    for (const orbit of this.sbCometOrbits) orbit.setVisible(show);
   }
 
   setPlanetScale(scale: number) {
@@ -456,6 +579,62 @@ export class SolarSystemScene {
       (cloud.points.geometry.attributes.position as THREE.BufferAttribute).needsUpdate = true;
     }
     this.sbLerpT = 1;
+
+    // 為 HTC/JFC 彗星繪製軌道路徑
+    for (const orbit of this.sbCometOrbits) orbit.dispose(this.scene);
+    this.sbCometOrbits = [];
+
+    for (const cls of ["HTC", "JFC"]) {
+      const bodies = grouped[cls];
+      if (!bodies) continue;
+      const color = COLORS[cls] ?? 0x888888;
+
+      for (const b of bodies) {
+        if (b.e >= 0.98 || b.a <= 0 || b.period_days <= 0) continue;
+
+        // 計算軌道取樣點
+        const samples = 360;
+        const periodMs = b.period_days * 86400000;
+        const pts: [number, number, number][] = [];
+        const DEG2RAD = Math.PI / 180;
+        const TWO_PI = 2 * Math.PI;
+        const JD_UNIX_EPOCH = 2440587.5;
+        const epochMs = (b.epoch_jd - JD_UNIX_EPOCH) * 86400000;
+
+        for (let k = 0; k <= samples; k++) {
+          const tMs = initMs + (k / samples) * periodMs;
+          const days = (tMs - epochMs) / 86400000;
+          const n = TWO_PI / b.period_days;
+          let M = (b.ma * DEG2RAD + n * days) % TWO_PI;
+          if (M < 0) M += TWO_PI;
+          let E = M;
+          for (let j = 0; j < 8; j++) E -= (E - b.e * Math.sin(E) - M) / (1 - b.e * Math.cos(E));
+          if (!isFinite(E)) continue;
+
+          const cosE = Math.cos(E), sinE = Math.sin(E);
+          const x_orb = b.a * (cosE - b.e);
+          const y_orb = b.a * Math.sqrt(1 - b.e * b.e) * sinE;
+          const wRad = b.w * DEG2RAD, omRad = b.om * DEG2RAD, iRad = b.i * DEG2RAD;
+          const cosW = Math.cos(wRad), sinW = Math.sin(wRad);
+          const cosO = Math.cos(omRad), sinO = Math.sin(omRad);
+          const cosI = Math.cos(iRad), sinI = Math.sin(iRad);
+          const xEcl = (cosO * cosW - sinO * sinW * cosI) * x_orb + (-cosO * sinW - sinO * cosW * cosI) * y_orb;
+          const yEcl = (sinO * cosW + cosO * sinW * cosI) * x_orb + (-sinO * sinW + cosO * cosW * cosI) * y_orb;
+          const zEcl = (sinW * sinI) * x_orb + (cosW * sinI) * y_orb;
+          const dist = Math.sqrt(xEcl * xEcl + yEcl * yEcl + zEcl * zEcl);
+          if (dist > 80) continue; // 截斷太遠的部分
+          const r = auToScene(dist);
+          const s = r / (dist || 1);
+          pts.push([xEcl * s, zEcl * s, -yEcl * s]);
+        }
+
+        if (pts.length > 10) {
+          const orbit = new OrbitPath(this.scene, pts, color);
+          orbit.setOpacity(0.1);
+          this.sbCometOrbits.push(orbit);
+        }
+      }
+    }
   }
 
   /** 計算目標位置（寫入 targetArr），並把 posArr 複製到 prevArr */
@@ -547,6 +726,8 @@ export class SolarSystemScene {
 
     // 清理軌道
     for (const orbit of this.orbits) orbit.dispose(this.scene);
+    for (const orbit of this.cometOrbits) orbit.dispose(this.scene);
+    for (const orbit of this.sbCometOrbits) orbit.dispose(this.scene);
 
     this.renderer.dispose();
     this.renderer.domElement.remove();

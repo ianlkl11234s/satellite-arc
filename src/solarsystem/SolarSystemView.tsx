@@ -19,22 +19,39 @@ export interface SolarSystemViewProps {
   particleSize: number;
   particleOpacity: number;
   classColors?: Record<string, string>;
+  onBodyClick?: (name: string | null) => void;
+  selectedBody?: string | null;
 }
 
 export function SolarSystemView({
   getCurrentTime, orbitOpacity, planetScale,
   glowOpacity, showLabels, showOrbits, showAsteroidBelt,
   smallBodies, visibleClasses, particleSize, particleOpacity, classColors,
+  onBodyClick, selectedBody,
 }: SolarSystemViewProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const sceneRef = useRef<SolarSystemScene | null>(null);
+  const onClickRef = useRef(onBodyClick);
+  onClickRef.current = onBodyClick;
 
   useEffect(() => {
     if (!containerRef.current) return;
     const solar = new SolarSystemScene(containerRef.current);
     sceneRef.current = solar;
 
+    const canvas = solar.renderer.domElement;
+    const onClick = (e: MouseEvent) => {
+      const rect = canvas.getBoundingClientRect();
+      const body = solar.pickBody(
+        e.clientX - rect.left, e.clientY - rect.top,
+        rect.width, rect.height,
+      );
+      onClickRef.current?.(body);
+    };
+    canvas.addEventListener("click", onClick);
+
     return () => {
+      canvas.removeEventListener("click", onClick);
       solar.dispose();
       sceneRef.current = null;
     };
@@ -57,6 +74,7 @@ export function SolarSystemView({
   useEffect(() => { if (sceneRef.current) sceneRef.current.setParticleSize(particleSize); }, [particleSize]);
   useEffect(() => { if (sceneRef.current) sceneRef.current.setParticleOpacity(particleOpacity); }, [particleOpacity]);
   useEffect(() => { if (sceneRef.current && classColors) sceneRef.current.setClassColors(classColors); }, [classColors]);
+  useEffect(() => { if (sceneRef.current && selectedBody) sceneRef.current.flyToBody(selectedBody); }, [selectedBody]);
 
   return (
     <div

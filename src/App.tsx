@@ -10,6 +10,7 @@ import { useIsMobile } from "./hooks/useIsMobile";
 import { LoadingScreen } from "./components/LoadingScreen";
 import { InfoModal } from "./components/InfoModal";
 import { SolarSystemView } from "./solarsystem/SolarSystemView";
+import { getSolarBodyInfo, getTypeLabel } from "./solarsystem/solarBodyInfo";
 import { SolarSidebar } from "./components/SolarSidebar";
 import { loadAllSmallBodies, type SmallBody } from "./data/smallBodyLoader";
 import { ViewModeToggle, type ViewMode } from "./components/ViewModeToggle";
@@ -115,6 +116,8 @@ export default function App() {
     MBA: "#888888", TJN: "#66aa66", NEO: "#ff4444",
     TNO: "#6688cc", CEN: "#bb88dd", HTC: "#88ccff", JFC: "#aaddaa",
   });
+  const [selectedBody, setSelectedBody] = useState<string | null>(null);
+  const [bodyCardExpanded, setBodyCardExpanded] = useState(false);
 
   const { isMobile } = useIsMobile();
 
@@ -340,6 +343,8 @@ export default function App() {
           particleSize={solarParticleSize}
           particleOpacity={solarParticleOpacity}
           classColors={solarColors}
+          onBodyClick={(name) => { setSelectedBody(name); setBodyCardExpanded(false); }}
+          selectedBody={selectedBody}
         />
       )}
 
@@ -646,6 +651,73 @@ export default function App() {
           )}
         </div>
       )}
+
+      {/* 太陽系天體資訊卡 */}
+      {viewMode === "solar" && selectedBody && (() => {
+        const info = getSolarBodyInfo(selectedBody);
+        if (!info) return null;
+        return (
+          <div style={{
+            position: "absolute", zIndex: 10,
+            ...(isMobile
+              ? { bottom: 58, left: 8, right: 8, maxHeight: "45vh", width: "auto" }
+              : { top: 60, right: 16, width: 300, maxHeight: "calc(100vh - 140px)" }),
+            overflowY: "auto",
+            background: "#12161ECC", backdropFilter: "blur(24px)",
+            borderRadius: 14, border: "1px solid rgba(255,255,255,0.06)",
+            fontFamily: FONT, fontSize: 13, color: "#fff",
+          }}>
+            {/* Card Header */}
+            <div
+              style={{ padding: "16px 20px 12px", cursor: "pointer" }}
+              onClick={() => setBodyCardExpanded((v) => !v)}
+            >
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 8 }}>
+                <div style={{ flex: 1 }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                    <span style={{ fontSize: 16, fontWeight: 700 }}>{info.label}</span>
+                  </div>
+                  <div style={{ fontSize: 13, color: "rgba(255,255,255,0.45)", marginTop: 4 }}>{info.zhName}</div>
+                </div>
+                <div style={{ display: "flex", gap: 4, flexShrink: 0 }}>
+                  <div style={{ width: 24, height: 24, display: "flex", alignItems: "center", justifyContent: "center", color: "rgba(255,255,255,0.4)" }}>
+                    {bodyCardExpanded ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
+                  </div>
+                  <button onClick={(e) => { e.stopPropagation(); setSelectedBody(null); }} style={{
+                    width: 24, height: 24, display: "flex", alignItems: "center", justifyContent: "center",
+                    background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.06)", borderRadius: 6,
+                    color: "rgba(255,255,255,0.4)", cursor: "pointer", padding: 0, flexShrink: 0,
+                  }}>
+                    <X size={12} />
+                  </button>
+                </div>
+              </div>
+              <div style={{ fontSize: 12, color: "rgba(255,255,255,0.5)", marginTop: 4 }}>
+                {getTypeLabel(info.type)} · {info.desc}
+              </div>
+            </div>
+
+            {/* Card Body */}
+            {bodyCardExpanded && (<>
+              <div style={{ height: 1, background: "rgba(255,255,255,0.06)" }} />
+              <div style={{ padding: "12px 20px 16px", display: "flex", flexDirection: "column", gap: 10 }}>
+                {info.radiusKm && <InfoRow label="Radius" value={`${info.radiusKm.toLocaleString()} km`} />}
+                {info.distanceAU != null && <InfoRow label="Distance" value={`${info.distanceAU} AU`} />}
+                {info.orbitalPeriod && <InfoRow label="Orbit" value={info.orbitalPeriod} />}
+                {info.moons != null && <InfoRow label="Moons" value={String(info.moons)} />}
+                {info.temperature && <InfoRow label="Temp" value={info.temperature} />}
+                {info.atmosphere && <InfoRow label="Atmos" value={info.atmosphere} />}
+                {info.note && (
+                  <>
+                    <div style={{ height: 1, background: "rgba(255,255,255,0.06)", margin: "2px 0" }} />
+                    <div style={{ fontSize: 12, color: "rgba(255,255,255,0.5)", lineHeight: 1.6 }}>{info.note}</div>
+                  </>
+                )}
+              </div>
+            </>)}
+          </div>
+        );
+      })()}
 
       {/* 重新計算 overlay */}
       {recalculating && (
