@@ -476,19 +476,19 @@ function EncyclopediaPanel(props: SolarSidebarProps) {
               <div style={introLabelStyle}>他們對太空的重要性</div>
               <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
                 <div>
-                  <strong>🕰 太陽系的「時空膠囊」</strong>
+                  <strong>太陽系的「時空膠囊」</strong>
                   <p style={{ margin: "2px 0" }}>大行星在幾十億年間經歷火山、地殼變動，最古老的岩石早已被重塑。但寒冷邊疆的柯伊伯帶天體從 46 億年前就保持著原貌，分析它們就像直接讀取太陽系的「原始設定檔」。</p>
                 </div>
                 <div>
-                  <strong>💧 地球生命的「送貨員」</strong>
+                  <strong>地球生命的「送貨員」</strong>
                   <p style={{ margin: "2px 0" }}>早期地球可能非常乾燥。海洋和有機分子很可能是由無數顆富含水分的彗星和小行星撞擊地球時「運送」過來的。</p>
                 </div>
                 <div>
-                  <strong>🛡 行星防禦系統</strong>
+                  <strong>行星防禦系統</strong>
                   <p style={{ margin: "2px 0" }}>6,500 萬年前一顆 ~10 公里的小行星導致恐龍滅絕。人類正精確計算每顆大於 140 公尺的 NEO 未來軌跡，NASA DART 任務已成功測試偏轉小行星軌道的技術。</p>
                 </div>
                 <div>
-                  <strong>⛏ 未來的太空加油站與礦場</strong>
+                  <strong>未來的太空加油站與礦場</strong>
                   <p style={{ margin: "2px 0" }}>小行星含有豐富的冰（可電解為火箭燃料）和稀有金屬。某些金屬型小行星（如 Psyche 16）的資源價值超過地球經濟總量。</p>
                 </div>
               </div>
