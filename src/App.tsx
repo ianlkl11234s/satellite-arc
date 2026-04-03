@@ -126,6 +126,8 @@ export default function App() {
   const [selectedBody, setSelectedBody] = useState<string | null>(null);
   const [bodyCardExpanded, setBodyCardExpanded] = useState(false);
   const [showSolarInfo, setShowSolarInfo] = useState(false);
+  const [solarLoading, setSolarLoading] = useState(false);
+  const [solarLoadingMsg, setSolarLoadingMsg] = useState("");
   const [pickedSmallBody, setPickedSmallBody] = useState<import("./data/smallBodyLoader").SmallBody | null>(null);
 
   const { isMobile } = useIsMobile();
@@ -153,18 +155,27 @@ export default function App() {
 
   // 載入小天體資料（進入太陽系模式時載入一次）
   useEffect(() => {
-    if (viewMode === "solar" && !smallBodies) {
+    if (viewMode === "solar" && !smallBodies && !solarLoading) {
+      setSolarLoading(true);
+      setSolarLoadingMsg("Loading small body data...");
       loadAllSmallBodies()
         .then((grouped) => {
           const total = Object.values(grouped).reduce((s, arr) => s + arr.length, 0);
           if (total > 0) {
-            console.log(`Loaded ${total} small bodies:`, Object.entries(grouped).map(([k, v]) => `${k}=${v.length}`).join(", "));
-            setSmallBodies(grouped);
+            setSolarLoadingMsg(`Computing ${total.toLocaleString()} orbits...`);
+            // 延遲一幀讓 UI 更新後再設定資料（觸發 Kepler 計算）
+            setTimeout(() => {
+              setSmallBodies(grouped);
+              setSolarLoading(false);
+              setSolarLoadingMsg("");
+            }, 50);
+          } else {
+            setSolarLoading(false);
           }
         })
-        .catch((err) => console.warn("Small body load failed:", err));
+        .catch((err) => { console.warn("Small body load failed:", err); setSolarLoading(false); });
     }
-  }, [viewMode, smallBodies]);
+  }, [viewMode, smallBodies, solarLoading]);
 
   const filteredTles = useMemo(() => {
     return tles.filter((tle) => {
@@ -757,6 +768,28 @@ export default function App() {
           </div>
         );
       })()}
+
+      {/* 太陽系載入 overlay */}
+      {viewMode === "solar" && solarLoading && (
+        <div style={{
+          position: "absolute", inset: 0, zIndex: 30,
+          display: "flex", alignItems: "center", justifyContent: "center",
+          background: "rgba(2,2,8,0.5)", backdropFilter: "blur(4px)",
+          pointerEvents: "none",
+        }}>
+          <div style={{
+            display: "flex", alignItems: "center", gap: 14,
+            padding: "16px 28px",
+            background: "#12161ECC", backdropFilter: "blur(24px)",
+            borderRadius: 14, border: "1px solid rgba(255,180,71,0.3)",
+          }}>
+            <div style={{ width: 12, height: 12, borderRadius: "50%", background: "#FFB347", animation: "pulse 1s ease-in-out infinite" }} />
+            <span style={{ fontSize: 14, fontFamily: FONT, color: "rgba(255,255,255,0.8)" }}>
+              {solarLoadingMsg}
+            </span>
+          </div>
+        </div>
+      )}
 
       {/* 重新計算 overlay */}
       {recalculating && (

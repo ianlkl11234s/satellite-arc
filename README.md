@@ -6,11 +6,19 @@
 - **Earth Mode** — 從 Supabase 載入 ~15,000 顆衛星（含太空碎片）的 TLE 軌道參數，用 satellite.js 在瀏覽器即時計算位置，以 Three.js 渲染在 3D 地球上
 - **Solar System Mode** — 8 大行星 + 月球 + 矮行星 + 彗星 + 86,549 顆真實小天體（JPL SBDB），Keplerian 軌道即時計算
 
+### Earth Mode
 ![Satellite Tracker Overview](screenshot/overview.png)
 
 ![Closeup View](screenshot/closeup.png)
 
 ![Starlink Info Card](screenshot/starlink-info.png)
+
+### Solar System Mode
+![Solar System Overview](screenshot/solar-overview.png)
+
+![Solar System Settings](screenshot/solar-settings.png)
+
+![Solar System Encyclopedia](screenshot/solar-encyclopedia.png)
 
 ## 功能
 
@@ -72,6 +80,12 @@
 - **飛行視角** — 點擊後相機 ease-out 平滑飛到天體附近
 - **時間加速** — 10min/s ~ 1month/s，時間軸 ±1 年
 - **平滑移動** — 雙快取 lerp 內插，所有速度下零頓感
+
+**載入體驗**
+- 切換到太陽系模式時，自動從 Supabase 載入 86,549 筆小天體資料
+- 載入過程顯示 overlay 提示（「Loading small body data...」→「Computing 86,549 orbits...」）
+- 7 個類別平行載入 + Range header 自動分頁，約 2-3 秒完成
+- 載入後純 client-side 計算，不再需要網路請求
 
 **軌道計算**
 - Keplerian 軌道力學 — Newton-Raphson 解 Kepler 方程（低 e: 3 次迭代，高 e: 8 次）
