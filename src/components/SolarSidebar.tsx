@@ -320,14 +320,30 @@ function SettingsPanel(props: SolarSidebarProps) {
             onChange={(e) => props.onPlanetOrbitOpacityChange(Number(e.target.value))}
             style={{ width: "100%", height: 3, appearance: "none", WebkitAppearance: "none", background: T.SLIDER_TRACK, borderRadius: 2, outline: "none", cursor: "pointer", accentColor: T.ACCENT, marginBottom: 6 }} />
         )}
-        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 2 }}>
           <span style={{ fontSize: 13, fontFamily: T.FONT, color: T.FONT_SECONDARY }}>HTC Comets</span>
-          <ToggleSwitch checked={props.showHTCOrbits} onChange={props.onShowHTCOrbitsChange} />
+          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+            {props.showHTCOrbits && <span style={{ fontSize: 11, color: T.DIM }}>{Math.round(props.htcOrbitOpacity * 100)}%</span>}
+            <ToggleSwitch checked={props.showHTCOrbits} onChange={props.onShowHTCOrbitsChange} />
+          </div>
         </div>
-        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+        {props.showHTCOrbits && (
+          <input type="range" min={0.05} max={0.5} step={0.05} value={props.htcOrbitOpacity}
+            onChange={(e) => props.onHTCOrbitOpacityChange(Number(e.target.value))}
+            style={{ width: "100%", height: 3, appearance: "none", WebkitAppearance: "none", background: T.SLIDER_TRACK, borderRadius: 2, outline: "none", cursor: "pointer", accentColor: T.ACCENT, marginBottom: 6 }} />
+        )}
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 2 }}>
           <span style={{ fontSize: 13, fontFamily: T.FONT, color: T.FONT_SECONDARY }}>JFC Comets</span>
-          <ToggleSwitch checked={props.showJFCOrbits} onChange={props.onShowJFCOrbitsChange} />
+          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+            {props.showJFCOrbits && <span style={{ fontSize: 11, color: T.DIM }}>{Math.round(props.jfcOrbitOpacity * 100)}%</span>}
+            <ToggleSwitch checked={props.showJFCOrbits} onChange={props.onShowJFCOrbitsChange} />
+          </div>
         </div>
+        {props.showJFCOrbits && (
+          <input type="range" min={0.05} max={0.5} step={0.05} value={props.jfcOrbitOpacity}
+            onChange={(e) => props.onJFCOrbitOpacityChange(Number(e.target.value))}
+            style={{ width: "100%", height: 3, appearance: "none", WebkitAppearance: "none", background: T.SLIDER_TRACK, borderRadius: 2, outline: "none", cursor: "pointer", accentColor: T.ACCENT, marginBottom: 6 }} />
+        )}
       </div>
 
       <Divider />
