@@ -9,9 +9,16 @@ import { Sidebar } from "./components/Sidebar";
 import { useIsMobile } from "./hooks/useIsMobile";
 import { LoadingScreen } from "./components/LoadingScreen";
 import { InfoModal } from "./components/InfoModal";
+import { SolarSystemView } from "./solarsystem/SolarSystemView";
+import { getSolarBodyInfo, getTypeLabel } from "./solarsystem/solarBodyInfo";
+import { SolarSidebar } from "./components/SolarSidebar";
+import { SolarInfoModal } from "./components/SolarInfoModal";
+import { loadAllSmallBodies, type SmallBody } from "./data/smallBodyLoader";
+import { ViewModeToggle, type ViewMode } from "./components/ViewModeToggle";
 import { Play, Pause, X, LocateFixed, ChevronDown, ChevronUp } from "lucide-react";
 
 const SPEED_OPTIONS = [10, 60, 300, 600];
+const SOLAR_SPEED_OPTIONS = [600, 3600, 86400, 604800, 2592000]; // 10min, 1hr, 1day, 1week, 1month per second
 const FONT = "'Inter', sans-serif";
 const ALL_CATEGORIES = Object.keys(CATEGORIES);
 
@@ -91,6 +98,39 @@ export default function App() {
   const [cameraPreset, setCameraPreset] = useState<CameraPreset | null>(null);
   const [followMode, setFollowMode] = useState(false);
   const [showInfo, setShowInfo] = useState(false);
+  const [viewMode, setViewMode] = useState<ViewMode>("earth");
+
+  // 太陽系資料
+  const [smallBodies, setSmallBodies] = useState<Record<string, SmallBody[]> | undefined>(undefined);
+
+  // 太陽系參數
+  const [solarPlanetScale, setSolarPlanetScale] = useState(1.0);
+  const [solarGlowOpacity, setSolarGlowOpacity] = useState(0.6);
+  const [solarShowLabels, setSolarShowLabels] = useState(true);
+  const [solarShowAsteroidBelt] = useState(true);
+  const [solarVisibleClasses, setSolarVisibleClasses] = useState<Record<string, boolean>>({ MBA: true, TJN: true, NEO: true, TNO: true, CEN: true, HTC: true, JFC: true });
+  // 軌道分組
+  const [showPlanetOrbits, setShowPlanetOrbits] = useState(true);
+  const [planetOrbitOpacity, setPlanetOrbitOpacity] = useState(0.8);
+  const [showHTCOrbits, setShowHTCOrbits] = useState(false);
+  const [htcOrbitOpacity, setHTCOrbitOpacity] = useState(0.1);
+  const [showJFCOrbits, setShowJFCOrbits] = useState(false);
+  const [jfcOrbitOpacity, setJFCOrbitOpacity] = useState(0.1);
+  // 每類粒子設定
+  const [classSizes, setClassSizes] = useState<Record<string, number>>({ MBA: 0.13, TJN: 0.18, NEO: 0.21, TNO: 0.40, CEN: 0.26, HTC: 0.50, JFC: 0.46 });
+  const [classOpacities, setClassOpacities] = useState<Record<string, number>>({ MBA: 0.6, TJN: 0.8, NEO: 0.65, TNO: 1.0, CEN: 1.0, HTC: 1.0, JFC: 0.6 });
+  const [spectralMode, setSpectralMode] = useState(false);
+  const [solarColors, setSolarColors] = useState<Record<string, string>>({
+    MBA: "#888888", TJN: "#66aa66", NEO: "#ff4444",
+    TNO: "#6688cc", CEN: "#bb88dd", HTC: "#88ccff", JFC: "#aaddaa",
+  });
+  const [selectedBody, setSelectedBody] = useState<string | null>(null);
+  const [bodyCardExpanded, setBodyCardExpanded] = useState(false);
+  const [showSolarInfo, setShowSolarInfo] = useState(false);
+  const [solarLoading, setSolarLoading] = useState(false);
+  const [solarLoadingMsg, setSolarLoadingMsg] = useState("");
+  const [pickedSmallBody, setPickedSmallBody] = useState<import("./data/smallBodyLoader").SmallBody | null>(null);
+
   const { isMobile } = useIsMobile();
 
   // 模擬時間
@@ -113,6 +153,30 @@ export default function App() {
       .then(([l, p]) => { setLaunches(l); setLaunchPads(p); })
       .catch((err) => console.warn("Launch data load failed:", err));
   }, []);
+
+  // 載入小天體資料（進入太陽系模式時載入一次）
+  useEffect(() => {
+    if (viewMode === "solar" && !smallBodies && !solarLoading) {
+      setSolarLoading(true);
+      setSolarLoadingMsg("Loading small body data...");
+      loadAllSmallBodies()
+        .then((grouped) => {
+          const total = Object.values(grouped).reduce((s, arr) => s + arr.length, 0);
+          if (total > 0) {
+            setSolarLoadingMsg(`Computing ${total.toLocaleString()} orbits...`);
+            // 延遲一幀讓 UI 更新後再設定資料（觸發 Kepler 計算）
+            setTimeout(() => {
+              setSmallBodies(grouped);
+              setSolarLoading(false);
+              setSolarLoadingMsg("");
+            }, 50);
+          } else {
+            setSolarLoading(false);
+          }
+        })
+        .catch((err) => { console.warn("Small body load failed:", err); setSolarLoading(false); });
+    }
+  }, [viewMode, smallBodies, solarLoading]);
 
   const filteredTles = useMemo(() => {
     return tles.filter((tle) => {
@@ -202,6 +266,7 @@ export default function App() {
   }, []);
 
   const handlePresetApplied = useCallback(() => setCameraPreset(null), []);
+  const handleFlyToDone = useCallback(() => setFlyToTarget(null), []);
 
   const handleColorChange = useCallback((type: string, color: string) => {
     setColors((prev) => ({ ...prev, [type]: color }));
@@ -257,36 +322,60 @@ export default function App() {
           <LoadingScreen loading={loading} tleCount={tles.length} preparing={!loading && tles.length > 0} />
         </div>
       )}
-      <GlobeView
-        tles={tles}
-        orbits={orbits}
-        getCurrentTime={getCurrentTime}
-        visibleOrbitTypes={visibleCategories}
-        showTrails={showTrails}
-        showOrbits={showOrbits}
-        showDayNight={showDayNight}
-        orbitOpacity={orbitOpacity}
-        orbScale={orbScale}
-        orbOpacity={orbOpacity}
-        trailLength={trailLength}
-        colors={colors}
-        visibleConstellations={visibleConstellations ?? new Set()}
-        visibleCountries={visibleCountries ?? new Set()}
-        onSatelliteClick={handleSatelliteClick}
-        selectedId={selectedSat?.id ?? null}
-        onCameraChange={setCameraInfo}
-        cameraPreset={cameraPreset}
-        onPresetApplied={handlePresetApplied}
-        followMode={followMode}
-        launchPads={launchPads}
-        launches={launches}
-        showLaunchPads={showLaunchPads}
-        flyToTarget={flyToTarget}
-        onFlyToDone={useCallback(() => setFlyToTarget(null), [])}
-      />
+      {viewMode === "earth" ? (
+        <GlobeView
+          tles={tles}
+          orbits={orbits}
+          getCurrentTime={getCurrentTime}
+          visibleOrbitTypes={visibleCategories}
+          showTrails={showTrails}
+          showOrbits={showOrbits}
+          showDayNight={showDayNight}
+          orbitOpacity={orbitOpacity}
+          orbScale={orbScale}
+          orbOpacity={orbOpacity}
+          trailLength={trailLength}
+          colors={colors}
+          visibleConstellations={visibleConstellations ?? new Set()}
+          visibleCountries={visibleCountries ?? new Set()}
+          onSatelliteClick={handleSatelliteClick}
+          selectedId={selectedSat?.id ?? null}
+          onCameraChange={setCameraInfo}
+          cameraPreset={cameraPreset}
+          onPresetApplied={handlePresetApplied}
+          followMode={followMode}
+          launchPads={launchPads}
+          launches={launches}
+          showLaunchPads={showLaunchPads}
+          flyToTarget={flyToTarget}
+          onFlyToDone={handleFlyToDone}
+        />
+      ) : (
+        <SolarSystemView
+          getCurrentTime={getCurrentTime}
+          planetScale={solarPlanetScale}
+          glowOpacity={solarGlowOpacity}
+          showLabels={solarShowLabels}
+          showAsteroidBelt={solarShowAsteroidBelt}
+          showPlanetOrbits={showPlanetOrbits}
+          planetOrbitOpacity={planetOrbitOpacity}
+          showHTCOrbits={showHTCOrbits}
+          htcOrbitOpacity={htcOrbitOpacity}
+          showJFCOrbits={showJFCOrbits}
+          jfcOrbitOpacity={jfcOrbitOpacity}
+          smallBodies={smallBodies}
+          visibleClasses={solarVisibleClasses}
+          classSizes={classSizes}
+          classOpacities={classOpacities}
+          classColors={solarColors}
+          spectralMode={spectralMode}
+          onBodyClick={(name, sb) => { setSelectedBody(name); setBodyCardExpanded(false); setPickedSmallBody(sb ?? null); }}
+          selectedBody={selectedBody}
+        />
+      )}
 
-      {/* Icon Rail Sidebar */}
-      <Sidebar
+      {/* Icon Rail Sidebar — 地球模式才顯示 */}
+      {viewMode === "earth" && <Sidebar
         tles={tles}
         visibleCategories={visibleCategories}
         onToggleCategory={toggleCategory}
@@ -329,19 +418,65 @@ export default function App() {
           setCatalog(null);
           setFollowMode(false);
         }}
-      />
+      />}
+
+      {/* Solar System Sidebar */}
+      {viewMode === "solar" && (
+        <SolarSidebar
+          planetScale={solarPlanetScale}
+          onPlanetScaleChange={setSolarPlanetScale}
+          glowOpacity={solarGlowOpacity}
+          onGlowOpacityChange={setSolarGlowOpacity}
+          showLabels={solarShowLabels}
+          onShowLabelsChange={setSolarShowLabels}
+          showPlanetOrbits={showPlanetOrbits}
+          onShowPlanetOrbitsChange={setShowPlanetOrbits}
+          planetOrbitOpacity={planetOrbitOpacity}
+          onPlanetOrbitOpacityChange={setPlanetOrbitOpacity}
+          showHTCOrbits={showHTCOrbits}
+          onShowHTCOrbitsChange={setShowHTCOrbits}
+          htcOrbitOpacity={htcOrbitOpacity}
+          onHTCOrbitOpacityChange={setHTCOrbitOpacity}
+          showJFCOrbits={showJFCOrbits}
+          onShowJFCOrbitsChange={setShowJFCOrbits}
+          jfcOrbitOpacity={jfcOrbitOpacity}
+          onJFCOrbitOpacityChange={setJFCOrbitOpacity}
+          visibleClasses={solarVisibleClasses}
+          onToggleClass={(cls) => setSolarVisibleClasses((prev) => ({ ...prev, [cls]: !prev[cls] }))}
+          classCounts={smallBodies ? Object.fromEntries(Object.entries(smallBodies).map(([k, v]) => [k, v.length])) : {}}
+          classSizes={classSizes}
+          onClassSizeChange={(cls, v) => setClassSizes((prev) => ({ ...prev, [cls]: v }))}
+          classOpacities={classOpacities}
+          onClassOpacityChange={(cls, v) => setClassOpacities((prev) => ({ ...prev, [cls]: v }))}
+          colors={solarColors}
+          onColorChange={(cls, color) => setSolarColors((prev) => ({ ...prev, [cls]: color }))}
+          spectralMode={spectralMode}
+          onSpectralModeChange={setSpectralMode}
+          onInfoClick={() => setShowSolarInfo(true)}
+          isMobile={isMobile}
+        />
+      )}
 
       {/* Header */}
       <div style={{ position: "absolute", top: isMobile ? 8 : 16, left: isMobile ? 12 : 76, zIndex: 10, pointerEvents: "none", fontFamily: FONT }}>
         <h1 style={{ margin: 0, fontSize: isMobile ? 17 : 22, fontWeight: 700, color: "#fff", letterSpacing: -0.3 }}>
-          Satellite Arc
+          {viewMode === "earth" ? "Satellite Arc" : "Solar System"}
         </h1>
         <div style={{ display: "flex", alignItems: "center", gap: 6, marginTop: 2 }}>
-          <span style={{ fontSize: isMobile ? 11 : 13, color: "rgba(255,255,255,0.7)" }}>{visibleCount.toLocaleString()} satellites</span>
-          <span style={{ fontSize: isMobile ? 11 : 13, color: "rgba(255,255,255,0.3)" }}>·</span>
+          {viewMode === "earth" ? (
+            <>
+              <span style={{ fontSize: isMobile ? 11 : 13, color: "rgba(255,255,255,0.7)" }}>{visibleCount.toLocaleString()} satellites</span>
+              <span style={{ fontSize: isMobile ? 11 : 13, color: "rgba(255,255,255,0.3)" }}>·</span>
+            </>
+          ) : (
+            <>
+              <span style={{ fontSize: isMobile ? 11 : 13, color: "rgba(255,255,255,0.5)" }}>8 planets</span>
+              <span style={{ fontSize: isMobile ? 11 : 13, color: "rgba(255,255,255,0.3)" }}>·</span>
+            </>
+          )}
           <span style={{ fontSize: isMobile ? 11 : 13, color: "rgba(255,255,255,0.7)" }}>{displayTime}</span>
         </div>
-        {!isMobile && (
+        {!isMobile && viewMode === "earth" && (
           <div style={{ display: "flex", alignItems: "center", gap: 6, marginTop: 2 }}>
             <span style={{ fontSize: 12, color: "rgba(255,255,255,0.45)" }}>dist {cameraInfo.distance.toFixed(1)}</span>
             <span style={{ fontSize: 12, color: "rgba(255,255,255,0.45)" }}>az {cameraInfo.azimuth}°</span>
@@ -350,13 +485,21 @@ export default function App() {
         )}
       </div>
 
-      {/* 右上角追蹤按鈕 */}
+      {/* 右上角控制列 */}
       <div style={{
         position: "absolute", top: 16, right: 16, zIndex: 10,
         display: "flex", alignItems: "center", gap: 8, fontFamily: FONT,
       }}>
+        {/* 模式切換 */}
+        <ViewModeToggle mode={viewMode} onChange={(m) => {
+          setViewMode(m);
+          // 切換時自動調整速度到合適範圍
+          if (m === "solar" && speed < 600) setSpeed(604800); // 1w/s
+          if (m === "earth" && speed > 600) setSpeed(60);
+        }} />
+
         {/* 追蹤模式 */}
-        {selectedSat && (
+        {viewMode === "earth" && selectedSat && (
           <button onClick={() => setFollowMode((f) => !f)} title={followMode ? "停止追蹤" : "追蹤衛星"} style={{
             display: "flex", alignItems: "center", justifyContent: "center", gap: 6,
             height: 32, padding: "0 14px", borderRadius: 8,
@@ -372,8 +515,8 @@ export default function App() {
         )}
       </div>
 
-      {/* 選中衛星資訊卡 */}
-      {selectedSat && (() => {
+      {/* 選中衛星資訊卡 — 地球模式才顯示 */}
+      {viewMode === "earth" && selectedSat && (() => {
         const info = getSatelliteInfo(selectedSat.name);
         const orbitLabel = ORBIT_TYPE_LABELS[selectedSat.orbitType];
         const catInfo = CATEGORIES[selectedSat.orbitType];
@@ -468,8 +611,8 @@ export default function App() {
         );
       })()}
 
-      {/* 選中發射任務資訊卡 */}
-      {selectedLaunch && (
+      {/* 選中發射任務資訊卡 — 地球模式才顯示 */}
+      {viewMode === "earth" && selectedLaunch && (
         <div style={{
           position: "absolute", zIndex: 10,
           ...(isMobile
@@ -544,6 +687,114 @@ export default function App() {
         </div>
       )}
 
+      {/* 太陽系天體資訊卡 */}
+      {viewMode === "solar" && selectedBody && (() => {
+        const info = getSolarBodyInfo(selectedBody);
+        const sb = pickedSmallBody;
+        const isSmallBody = selectedBody.startsWith("sb_") && sb;
+
+        // 必須有 info 或 smallBody 才顯示
+        if (!info && !isSmallBody) return null;
+
+        const cardTitle = isSmallBody ? sb.name : info!.label;
+        const cardSub = isSmallBody
+          ? (sb.class === "HTC" ? "哈雷型彗星" : "木星族彗星")
+          : info!.zhName;
+        const cardDesc = isSmallBody
+          ? `${sb.class === "HTC" ? "Halley-type Comet" : "Jupiter-family Comet"}`
+          : `${getTypeLabel(info!.type)} · ${info!.desc}`;
+
+        return (
+          <div style={{
+            position: "absolute", zIndex: 10,
+            ...(isMobile
+              ? { bottom: 58, left: 8, right: 8, maxHeight: "45vh", width: "auto" }
+              : { top: 60, right: 16, width: 300, maxHeight: "calc(100vh - 140px)" }),
+            overflowY: "auto",
+            background: "#12161ECC", backdropFilter: "blur(24px)",
+            borderRadius: 14, border: "1px solid rgba(255,255,255,0.06)",
+            fontFamily: FONT, fontSize: 13, color: "#fff",
+          }}>
+            {/* Card Header */}
+            <div
+              style={{ padding: "16px 20px 12px", cursor: "pointer" }}
+              onClick={() => setBodyCardExpanded((v) => !v)}
+            >
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 8 }}>
+                <div style={{ flex: 1 }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                    <span style={{ fontSize: 16, fontWeight: 700 }}>{cardTitle}</span>
+                  </div>
+                  <div style={{ fontSize: 13, color: "rgba(255,255,255,0.45)", marginTop: 4 }}>{cardSub}</div>
+                </div>
+                <div style={{ display: "flex", gap: 4, flexShrink: 0 }}>
+                  <div style={{ width: 24, height: 24, display: "flex", alignItems: "center", justifyContent: "center", color: "rgba(255,255,255,0.4)" }}>
+                    {bodyCardExpanded ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
+                  </div>
+                  <button onClick={(e) => { e.stopPropagation(); setSelectedBody(null); setPickedSmallBody(null); }} style={{
+                    width: 24, height: 24, display: "flex", alignItems: "center", justifyContent: "center",
+                    background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.06)", borderRadius: 6,
+                    color: "rgba(255,255,255,0.4)", cursor: "pointer", padding: 0, flexShrink: 0,
+                  }}>
+                    <X size={12} />
+                  </button>
+                </div>
+              </div>
+              <div style={{ fontSize: 12, color: "rgba(255,255,255,0.5)", marginTop: 4 }}>{cardDesc}</div>
+            </div>
+
+            {/* Card Body */}
+            {bodyCardExpanded && (<>
+              <div style={{ height: 1, background: "rgba(255,255,255,0.06)" }} />
+              <div style={{ padding: "12px 20px 16px", display: "flex", flexDirection: "column", gap: 10 }}>
+                {isSmallBody ? (<>
+                  <InfoRow label="Semi-major" value={`${sb.a.toFixed(3)} AU`} />
+                  <InfoRow label="Eccentricity" value={sb.e.toFixed(4)} />
+                  <InfoRow label="Inclination" value={`${sb.i.toFixed(2)}°`} />
+                  <InfoRow label="Period" value={`${(sb.period_days / 365.25).toFixed(1)} years`} />
+                  <InfoRow label="Class" value={sb.class} />
+                </>) : (<>
+                  {info!.radiusKm && <InfoRow label="Radius" value={`${info!.radiusKm.toLocaleString()} km`} />}
+                  {info!.distanceAU != null && <InfoRow label="Distance" value={`${info!.distanceAU} AU`} />}
+                  {info!.orbitalPeriod && <InfoRow label="Orbit" value={info!.orbitalPeriod} />}
+                  {info!.moons != null && <InfoRow label="Moons" value={String(info!.moons)} />}
+                  {info!.temperature && <InfoRow label="Temp" value={info!.temperature} />}
+                  {info!.atmosphere && <InfoRow label="Atmos" value={info!.atmosphere} />}
+                  {info!.note && (
+                    <>
+                      <div style={{ height: 1, background: "rgba(255,255,255,0.06)", margin: "2px 0" }} />
+                      <div style={{ fontSize: 12, color: "rgba(255,255,255,0.5)", lineHeight: 1.6 }}>{info!.note}</div>
+                    </>
+                  )}
+                </>)}
+              </div>
+            </>)}
+          </div>
+        );
+      })()}
+
+      {/* 太陽系載入 overlay */}
+      {viewMode === "solar" && solarLoading && (
+        <div style={{
+          position: "absolute", inset: 0, zIndex: 30,
+          display: "flex", alignItems: "center", justifyContent: "center",
+          background: "rgba(2,2,8,0.5)", backdropFilter: "blur(4px)",
+          pointerEvents: "none",
+        }}>
+          <div style={{
+            display: "flex", alignItems: "center", gap: 14,
+            padding: "16px 28px",
+            background: "#12161ECC", backdropFilter: "blur(24px)",
+            borderRadius: 14, border: "1px solid rgba(255,180,71,0.3)",
+          }}>
+            <div style={{ width: 12, height: 12, borderRadius: "50%", background: "#FFB347", animation: "pulse 1s ease-in-out infinite" }} />
+            <span style={{ fontSize: 14, fontFamily: FONT, color: "rgba(255,255,255,0.8)" }}>
+              {solarLoadingMsg}
+            </span>
+          </div>
+        </div>
+      )}
+
       {/* 重新計算 overlay */}
       {recalculating && (
         <div style={{
@@ -589,45 +840,58 @@ export default function App() {
           {playing ? <Pause size={isMobile ? 10 : 12} /> : <Play size={isMobile ? 10 : 12} />}
         </button>
 
-        {/* Speed buttons */}
+        {/* Speed buttons — 地球模式用秒，太陽系模式用更大單位 */}
         <div style={{ display: "flex", gap: 2 }}>
-          {SPEED_OPTIONS.map((s) => (
-            <button key={s} onClick={() => setSpeed(s)} style={{
-              height: isMobile ? 20 : 24, minWidth: isMobile ? 26 : 30, padding: "0 4px",
-              borderRadius: 6, border: "none",
-              background: speed === s ? "rgba(91,156,246,0.12)" : "transparent",
-              color: speed === s ? "#5B9CF6" : "rgba(255,255,255,0.35)",
-              cursor: "pointer", fontFamily: FONT, fontSize: isMobile ? 10 : 11, fontWeight: 500,
-            }}>
-              {s}x
-            </button>
-          ))}
+          {(viewMode === "earth" ? SPEED_OPTIONS : SOLAR_SPEED_OPTIONS).map((s) => {
+            const label = viewMode === "earth"
+              ? `${s}x`
+              : s >= 2592000 ? `${Math.round(s / 2592000)}mo/s`
+              : s >= 604800 ? `${Math.round(s / 604800)}w/s`
+              : s >= 86400 ? `${s / 86400}d/s`
+              : s >= 3600 ? `${s / 3600}h/s`
+              : `${Math.round(s / 60)}m/s`;
+            return (
+              <button key={s} onClick={() => setSpeed(s)} style={{
+                height: isMobile ? 20 : 24, minWidth: isMobile ? 26 : 30, padding: "0 4px",
+                borderRadius: 6, border: "none",
+                background: speed === s ? "rgba(91,156,246,0.12)" : "transparent",
+                color: speed === s ? "#5B9CF6" : "rgba(255,255,255,0.35)",
+                cursor: "pointer", fontFamily: FONT, fontSize: isMobile ? 10 : 11, fontWeight: 500,
+              }}>
+                {label}
+              </button>
+            );
+          })}
         </div>
 
-        {/* 時間軸 slider — 可拖拉，範圍 ±12 小時 */}
-        {!isMobile && (
-          <input
-            type="range"
-            min={-12}
-            max={12}
-            step={0.05}
-            value={(() => {
-              const diffHours = (simTimeRef.current - Date.now() / 1000) / 3600;
-              return Math.max(-12, Math.min(12, diffHours));
-            })()}
-            onChange={(e) => {
-              const hours = parseFloat(e.target.value);
-              simTimeRef.current = Date.now() / 1000 + hours * 3600;
-              setPlaying(false);
-            }}
-            style={{
-              width: 180, height: 4, appearance: "none", WebkitAppearance: "none",
-              background: "rgba(255,255,255,0.08)", borderRadius: 2,
-              outline: "none", cursor: "pointer", flexShrink: 0,
-              accentColor: "#5B9CF6",
-            }}
-          />
-        )}
+        {/* 時間軸 slider — 地球±12小時，太陽系±2年 */}
+        {!isMobile && (() => {
+          const rangeHours = viewMode === "earth" ? 12 : 365 * 24; // ±12h or ±1year
+          const stepSize = viewMode === "earth" ? 0.05 : 24; // 3min or 1day
+          return (
+            <input
+              type="range"
+              min={-rangeHours}
+              max={rangeHours}
+              step={stepSize}
+              value={(() => {
+                const diffHours = (simTimeRef.current - Date.now() / 1000) / 3600;
+                return Math.max(-rangeHours, Math.min(rangeHours, diffHours));
+              })()}
+              onChange={(e) => {
+                const hours = parseFloat(e.target.value);
+                simTimeRef.current = Date.now() / 1000 + hours * 3600;
+                setPlaying(false);
+              }}
+              style={{
+                width: 180, height: 4, appearance: "none", WebkitAppearance: "none",
+                background: "rgba(255,255,255,0.08)", borderRadius: 2,
+                outline: "none", cursor: "pointer", flexShrink: 0,
+                accentColor: "#5B9CF6",
+              }}
+            />
+          );
+        })()}
 
         {/* Time */}
         <span style={{ fontSize: isMobile ? 10 : 12, fontWeight: 500, color: "rgba(255,255,255,0.7)", minWidth: isMobile ? 70 : 100, textAlign: "center" }}>
@@ -646,6 +910,7 @@ export default function App() {
 
       {/* Info Modal */}
       {showInfo && <InfoModal onClose={() => setShowInfo(false)} />}
+      {showSolarInfo && <SolarInfoModal onClose={() => setShowSolarInfo(false)} />}
     </div>
   );
 }
