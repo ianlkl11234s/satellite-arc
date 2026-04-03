@@ -117,8 +117,8 @@ export default function App() {
   const [showJFCOrbits, setShowJFCOrbits] = useState(false);
   const [jfcOrbitOpacity, setJFCOrbitOpacity] = useState(0.1);
   // 每類粒子設定
-  const [classSizes, setClassSizes] = useState<Record<string, number>>({ MBA: 0.08, TJN: 0.1, NEO: 0.12, TNO: 0.08, CEN: 0.15, HTC: 0.2, JFC: 0.18 });
-  const [classOpacities, setClassOpacities] = useState<Record<string, number>>({ MBA: 0.4, TJN: 0.5, NEO: 0.5, TNO: 0.4, CEN: 0.6, HTC: 0.7, JFC: 0.6 });
+  const [classSizes, setClassSizes] = useState<Record<string, number>>({ MBA: 0.13, TJN: 0.18, NEO: 0.21, TNO: 0.40, CEN: 0.26, HTC: 0.50, JFC: 0.46 });
+  const [classOpacities, setClassOpacities] = useState<Record<string, number>>({ MBA: 0.6, TJN: 0.8, NEO: 0.65, TNO: 1.0, CEN: 1.0, HTC: 1.0, JFC: 0.6 });
   const [solarColors, setSolarColors] = useState<Record<string, string>>({
     MBA: "#888888", TJN: "#66aa66", NEO: "#ff4444",
     TNO: "#6688cc", CEN: "#bb88dd", HTC: "#88ccff", JFC: "#aaddaa",
@@ -479,7 +479,7 @@ export default function App() {
         <ViewModeToggle mode={viewMode} onChange={(m) => {
           setViewMode(m);
           // 切換時自動調整速度到合適範圍
-          if (m === "solar" && speed < 600) setSpeed(3600);
+          if (m === "solar" && speed < 600) setSpeed(604800); // 1w/s
           if (m === "earth" && speed > 600) setSpeed(60);
         }} />
 
