@@ -493,6 +493,8 @@ export default function App() {
         {/* 模式切換 */}
         <ViewModeToggle mode={viewMode} onChange={(m) => {
           setViewMode(m);
+          // 切回地球時重設模擬時間（太陽系加速後時間會跑很遠，SGP4 會爆）
+          simTimeRef.current = Date.now() / 1000;
           // 切換時自動調整速度到合適範圍
           if (m === "solar" && speed < 600) setSpeed(604800); // 1w/s
           if (m === "earth" && speed > 600) setSpeed(60);
