@@ -412,9 +412,74 @@ function ColorsPanel(props: SolarSidebarProps) {
 
 function EncyclopediaPanel(props: SolarSidebarProps) {
   const [expanded, setExpanded] = useState<string | null>(null);
+  const [showIntro, setShowIntro] = useState(true);
+
+  const introStyle = { fontSize: 12, lineHeight: 1.7, color: T.FONT_SECONDARY, fontFamily: T.FONT };
+  const introLabelStyle = { fontSize: 11, fontWeight: 600 as const, color: T.FONT_MUTED, marginBottom: 4, letterSpacing: 0.5, textTransform: "uppercase" as const };
+  const introHighlight = { color: T.ACCENT, fontWeight: 500 as const };
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+      {/* 總覽說明 */}
+      <div style={{
+        background: T.BG_ELEVATED, borderRadius: 10,
+        border: `1px solid ${showIntro ? T.BORDER : T.BORDER_SUBTLE}`,
+        overflow: "hidden",
+      }}>
+        <button onClick={() => setShowIntro(!showIntro)} style={{
+          width: "100%", display: "flex", alignItems: "center", gap: 10,
+          padding: "10px 14px", cursor: "pointer",
+          background: "transparent", border: "none",
+          color: T.FONT_SECONDARY, fontFamily: T.FONT, fontSize: 13, textAlign: "left",
+        }}>
+          <div style={{ width: 10, height: 10, borderRadius: "50%", background: T.ACCENT, flexShrink: 0 }} />
+          <div style={{ flex: 1, fontWeight: 600, fontSize: 13, color: T.FONT_PRIMARY }}>太陽系小天體總覽</div>
+          {showIntro ? <ChevronDown size={14} color={T.DIM} /> : <ChevronRight size={14} color={T.DIM} />}
+        </button>
+        {showIntro && (
+          <div style={{ padding: "0 14px 14px", ...introStyle, display: "flex", flexDirection: "column", gap: 14 }}>
+            <div>
+              <div style={introLabelStyle}>我們應該如何稱呼他們？</div>
+              <p style={{ margin: "4px 0" }}>
+                這五大類（MBA、TJN、NEO、TNO、Centaur）以及彗星，都有一個正式的總稱：
+                <span style={introHighlight}> 太陽系小天體（Small Solar System Bodies, SSSB）</span>。
+              </p>
+              <p style={{ margin: "4px 0" }}>每顆小行星會經歷一個「從代號到擁有姓名」的過程：</p>
+              <ul style={{ margin: "4px 0", paddingLeft: 16, display: "flex", flexDirection: "column", gap: 4 }}>
+                <li><strong>臨時編號</strong> — 剛發現時用年份和字母編號，如 <code>2004 MN4</code></li>
+                <li><strong>永久編號</strong> — 確認軌道後獲得數字 ID，如 <code>99942 (2004 MN4)</code></li>
+                <li><strong>正式命名</strong> — 發現者命名，如 <code>99942 Apophis（毀神星）</code></li>
+              </ul>
+            </div>
+
+            <div>
+              <div style={introLabelStyle}>他們對太空的重要性</div>
+              <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                <div>
+                  <strong>🕰 太陽系的「時空膠囊」</strong>
+                  <p style={{ margin: "2px 0" }}>大行星在幾十億年間經歷火山、地殼變動，最古老的岩石早已被重塑。但寒冷邊疆的柯伊伯帶天體從 46 億年前就保持著原貌，分析它們就像直接讀取太陽系的「原始設定檔」。</p>
+                </div>
+                <div>
+                  <strong>💧 地球生命的「送貨員」</strong>
+                  <p style={{ margin: "2px 0" }}>早期地球可能非常乾燥。海洋和有機分子很可能是由無數顆富含水分的彗星和小行星撞擊地球時「運送」過來的。</p>
+                </div>
+                <div>
+                  <strong>🛡 行星防禦系統</strong>
+                  <p style={{ margin: "2px 0" }}>6,500 萬年前一顆 ~10 公里的小行星導致恐龍滅絕。人類正精確計算每顆大於 140 公尺的 NEO 未來軌跡，NASA DART 任務已成功測試偏轉小行星軌道的技術。</p>
+                </div>
+                <div>
+                  <strong>⛏ 未來的太空加油站與礦場</strong>
+                  <p style={{ margin: "2px 0" }}>小行星含有豐富的冰（可電解為火箭燃料）和稀有金屬。某些金屬型小行星（如 Psyche 16）的資源價值超過地球經濟總量。</p>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
+
+      <Divider />
+
+      {/* 各類別百科卡片 */}
       {SMALL_BODY_CLASSES.map(({ key }) => {
         const info = SMALL_BODY_INFO[key];
         if (!info) return null;
@@ -489,10 +554,12 @@ function EncyclopediaPanel(props: SolarSidebarProps) {
 
 export function SolarSidebar(props: SolarSidebarProps) {
   const [activePanel, setActivePanel] = useState<PanelId | null>(null);
+  const [encyclopediaOpened, setEncyclopediaOpened] = useState(false);
   const mobile = props.isMobile;
 
   const handleIconClick = (id: PanelId) => {
     setActivePanel((p) => p === id ? null : id);
+    if (id === "encyclopedia") setEncyclopediaOpened(true);
   };
 
   const panelContent = activePanel && (
@@ -568,8 +635,16 @@ export function SolarSidebar(props: SolarSidebarProps) {
               background: activePanel === id ? T.ACCENT_DIM : "transparent",
               border: "none", borderRadius: 8, cursor: "pointer",
               color: activePanel === id ? T.ACCENT : T.FONT_TERTIARY, padding: 0,
+              position: "relative",
             }}>
               <Icon size={18} />
+              {id === "encyclopedia" && !encyclopediaOpened && (
+                <div style={{
+                  position: "absolute", top: 6, right: 6,
+                  width: 5, height: 5, borderRadius: "50%",
+                  background: "#EF4444", boxShadow: "0 0 4px rgba(239,68,68,0.6)",
+                }} />
+              )}
             </button>
           ))}
 
@@ -619,9 +694,19 @@ export function SolarSidebar(props: SolarSidebarProps) {
         <div style={{ width: 32, height: 1, background: T.BORDER }} />
 
         {PANELS.map(({ id, icon: Icon, title }) => (
-          <RailIcon key={id} active={activePanel === id} onClick={() => handleIconClick(id)} title={title}>
-            <Icon size={20} />
-          </RailIcon>
+          <div key={id} style={{ position: "relative" }}>
+            <RailIcon active={activePanel === id} onClick={() => handleIconClick(id)} title={title}>
+              <Icon size={20} />
+            </RailIcon>
+            {id === "encyclopedia" && !encyclopediaOpened && (
+              <div style={{
+                position: "absolute", top: 6, right: 6,
+                width: 6, height: 6, borderRadius: "50%",
+                background: "#EF4444", boxShadow: "0 0 4px rgba(239,68,68,0.6)",
+                pointerEvents: "none",
+              }} />
+            )}
+          </div>
         ))}
         <div style={{ width: 32, height: 1, background: T.BORDER }} />
         <RailIcon active={false} onClick={() => props.onInfoClick?.()} title="使用指南">
