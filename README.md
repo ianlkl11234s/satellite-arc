@@ -1,8 +1,10 @@
 # Satellite Arc
 
-3D 即時衛星軌道追蹤與視覺化。純 Three.js 渲染，瀏覽器端 SGP4 即時計算。
+3D 即時衛星軌道追蹤 + 太陽系模擬視覺化。純 Three.js 渲染，瀏覽器端即時計算。
 
-從 Supabase 載入 ~15,000 顆衛星（含太空碎片）的 TLE 軌道參數，用 [satellite.js](https://github.com/shashwatak/satellite-js) 在瀏覽器即時計算位置，以 Three.js 渲染在 3D 地球上。
+**雙模式切換：**
+- **Earth Mode** — 從 Supabase 載入 ~15,000 顆衛星（含太空碎片）的 TLE 軌道參數，用 satellite.js 在瀏覽器即時計算位置，以 Three.js 渲染在 3D 地球上
+- **Solar System Mode** — 8 大行星 + 月球 + 矮行星 + 彗星 + 86,549 顆真實小天體（JPL SBDB），Keplerian 軌道即時計算
 
 ![Satellite Tracker Overview](screenshot/overview.png)
 
@@ -38,6 +40,45 @@
 - **發射詳情卡片** — 火箭圖片、任務描述、機構、軌道參數、天氣、成功機率
 - **資料來源** — Launch Library 2 (TheSpaceDevs)，每日自動同步 upcoming + 回溯歷史 5 年
 
+### 太陽系模式（Solar System Mode）
+
+**場景渲染**
+- **8 大行星** — 2K 貼圖（Solar System Scope CC BY 4.0）+ 大氣光暈 + CSS2D 標籤
+- **太陽** — 貼圖 + 輝光 shader + 脈動動畫
+- **月球** — 貼圖 + 即時軌道位置（含升交點進動）
+- **土星環** — 貼圖 + 傾角
+- **矮行星** — Pluto、Eris + 軌道路徑
+- **5 顆著名彗星** — Halley、Encke、Pons-Brooks、Churyumov-Gerasimenko、Wirtanen
+- **星空背景** — 3,000 顆恆星 + 黃道面格線
+
+**86,549 顆真實小天體**（JPL Small-Body Database → Supabase）
+| 類別 | 數量 | 說明 |
+|------|------|------|
+| MBA 主帶小行星 | 40,000 | 火星-木星間（取樣） |
+| TJN 木星特洛伊 | 15,838 | L4/L5 拉格朗日點群聚（全量） |
+| NEO 近地天體 | 23,543 | Apollo 型，軌道穿越地球（全量） |
+| TNO 柯伊伯帶 | 6,033 | 海王星外（全量） |
+| CEN 半人馬 | 1,008 | 木星-海王星間（全量） |
+| HTC 哈雷型彗星 | 110 | 含軌道路徑（全量） |
+| JFC 木星族彗星 | 17 | 含軌道路徑（全量） |
+
+**太陽系側邊欄**
+- **設定** — 7 類小天體獨立開關（帶數量）、每類粒子大小/不透明度可調、軌道路徑分三組（行星/HTC/JFC）獨立開關 + 透明度
+- **配色主題** — 4 組預設（Default / Warm / Cool / Mono）+ 7 類自訂色
+- **天體百科** — 7 類小天體中文百科（簡介、形成、已知數量、重要性），含 NASA 任務參考
+
+**互動**
+- **點擊天體** — 點擊行星/彗星/矮行星/太陽/月球/HTC/JFC 粒子顯示資訊卡
+- **飛行視角** — 點擊後相機 ease-out 平滑飛到天體附近
+- **時間加速** — 10min/s ~ 1month/s，時間軸 ±1 年
+- **平滑移動** — 雙快取 lerp 內插，所有速度下零頓感
+
+**軌道計算**
+- Keplerian 軌道力學 — Newton-Raphson 解 Kepler 方程（低 e: 3 次迭代，高 e: 8 次）
+- 行星位置：J2000 軌道要素 + 每 30 幀計算 + 每幀 lerp
+- 小天體位置：每 60 幀批量 Kepler solve 86k 顆 + 每幀 lerp
+- 距離縮放：`√(AU) × 10`（行星大小誇張 ~500 倍，否則看不見）
+
 ### 使用者體驗
 - **時間軸拖拉** — 可拖拉 ±12 小時，即時更新衛星位置
 - **時間加速** — 10x ~ 600x，觀察衛星繞地球
@@ -61,6 +102,14 @@ Supabase satellite_tle               Supabase launches + launch_pads
 每幀分批計算衛星位置                   LaunchPadMarkers + LaunchPanel
     ↓ Three.js
 InstancedMesh 光點 + 歷史緩衝區尾巴 + 3D OrbitLines + 發射台標記
+
+JPL Small-Body Database (SBDB)
+    ↓ scripts/fetch_small_bodies.py（一次性匯入）
+Supabase small_bodies (86,549 筆)
+    ↓ PostgREST API（分頁載入）
+瀏覽器載入軌道要素
+    ↓ Keplerian orbit solver（每 60 幀批量計算 + 每幀 lerp）
+THREE.Points 粒子雲（7 類別，各色分開渲染）
 ```
 
 ### 效能策略
@@ -90,6 +139,8 @@ Earth radius = 1.0
 | **Launch Library 2** (TheSpaceDevs) → data-collectors → Supabase | 發射時程 + 233 發射台 + 太空事件 | 每 5 分鐘輪轉 |
 | **UCS Satellite Database** → Supabase | 用途/營運商/發射資訊 (7,560 筆) | 靜態 |
 | **NASA Black Marble** | 地球夜景貼圖 | 靜態 |
+| **JPL SBDB** → scripts/fetch_small_bodies.py → Supabase | 小天體軌道要素 (86,549 筆，7 類) | 一次性匯入 |
+| **Solar System Scope** | 行星 / 太陽 / 月球 2K 貼圖 (CC BY 4.0) | 靜態 |
 
 ### CelesTrak 群組清單
 
@@ -99,7 +150,7 @@ Earth radius = 1.0
 
 ```
 src/
-├── globe/                       ← 3D 地球渲染核心
+├── globe/                       ← 3D 地球渲染核心（Earth Mode）
 │   ├── GlobeView.tsx            ← React 容器 + 相機預設/追蹤模式
 │   ├── GlobeScene.ts            ← 場景管理 + 分批 SGP4 + 追蹤邏輯
 │   ├── EarthMesh.ts             ← 地球球體 + Fresnel 大氣
@@ -108,19 +159,41 @@ src/
 │   ├── OrbitLines.ts            ← 3D 靜態軌道弧線（真實高度映射）
 │   ├── LaunchPadMarkers.ts      ← 發射台地表標記 + 脈衝動畫
 │   └── coordinates.ts           ← 球面座標轉換 + altToRadius
+├── solarsystem/                 ← 太陽系渲染核心（Solar System Mode）
+│   ├── SolarSystemView.tsx      ← React 容器
+│   ├── SolarSystemScene.ts      ← 場景管理 + Kepler solver + lerp + pick
+│   ├── SunMesh.ts               ← 太陽球體 + 輝光 shader + 脈動
+│   ├── PlanetMesh.ts            ← 行星球體 + 貼圖 + CSS2D label + 光暈
+│   ├── OrbitPath.ts             ← 軌道橢圓線段
+│   ├── planetData.ts            ← 行星/彗星/矮行星 Keplerian 軌道要素
+│   ├── solarCoordinates.ts      ← Kepler 方程 + auToScene 縮放
+│   └── solarBodyInfo.ts         ← 天體中文百科資料
 ├── components/
-│   ├── Sidebar.tsx              ← Icon Rail + 7 面板（設定/篩選/配色/統計/視角/發射時程/Info）
-│   ├── LaunchPanel.tsx          ← 發射時程面板（倒數計時、詳情）
-│   ├── InfoModal.tsx            ← 操作指南/資料來源/使用技巧/關於/個人（中英文）
-│   └── LoadingScreen.tsx        ← 軌道動畫 + 步驟清單載入畫面
+│   ├── Sidebar.tsx              ← 地球模式 Icon Rail + 7 面板
+│   ├── SolarSidebar.tsx         ← 太陽系模式 Icon Rail + 3 面板（設定/配色/百科）
+│   ├── ViewModeToggle.tsx       ← Earth / Solar System 切換按鈕
+│   ├── LaunchPanel.tsx          ← 發射時程面板
+│   ├── InfoModal.tsx            ← 操作指南（中英文）
+│   └── LoadingScreen.tsx        ← 載入畫面
 ├── data/
-│   ├── satelliteLoader.ts       ← Supabase API + SGP4 + 11 分類定義
-│   ├── launchLoader.ts          ← Launch Library 2 資料載入（launches + pads）
+│   ├── satelliteLoader.ts       ← 衛星 TLE 載入 + 11 分類
+│   ├── launchLoader.ts          ← 發射資料載入
+│   ├── smallBodyLoader.ts       ← 小天體軌道要素載入（Supabase 分頁）
 │   └── satelliteInfo.ts         ← 中文俗名對照表
 ├── hooks/
-│   └── useIsMobile.ts           ← 響應式斷點偵測
-├── App.tsx                      ← 主程式（狀態管理 + 佈局 + 響應式）
+│   └── useIsMobile.ts
+├── App.tsx                      ← 雙模式狀態管理 + 條件渲染
 └── main.tsx
+
+scripts/
+├── small_bodies_schema.sql      ← Supabase small_bodies 表 DDL
+└── fetch_small_bodies.py        ← JPL SBDB → Supabase 一次性匯入腳本
+
+public/textures/
+├── earth-day.jpg, earth-dark.jpg
+├── sun.jpg, mercury.jpg, venus.jpg, mars.jpg
+├── jupiter.jpg, saturn.jpg, saturn_ring.png
+├── uranus.jpg, neptune.jpg, moon.jpg
 ```
 
 ## 快速開始
@@ -178,6 +251,12 @@ npm run build
 | 側邊欄 | 設定 / 篩選 / 配色 / 統計 / 視角 / 發射時程 / Info |
 | 追蹤按鈕 | 選中衛星後出現，相機跟隨衛星繞行 |
 | 點擊發射任務 | 相機飛到發射台 + 顯示詳情卡片 |
+| **Solar System 模式** | |
+| Earth / Solar System 切換 | 右上角 pill toggle |
+| 點擊行星/彗星 | 資訊卡 + 相機飛到天體 |
+| 點擊 HTC/JFC 粒子 | 顯示彗星名稱 + 軌道參數 |
+| 時間軸 | ±1 年，速度 10min/s ~ 1month/s |
+| 側邊欄 | 設定（分類篩選+粒子控制）/ 配色 / 天體百科 |
 
 ## Roadmap
 
@@ -195,8 +274,14 @@ npm run build
 - **太空天氣** — NASA DONKI / NOAA SWPC 太陽風暴、極光帶視覺化
 - **ISS 即時追蹤** — Open Notify API 國際太空站位置標記
 
+### 太陽系擴充
+- **深空探測器** — JWST / Voyager / New Horizons 即時位置（JPL Horizons API → Supabase）
+- **近地天體接近警報** — NASA CNEOS Close Approach API，即將接近地球的小行星通知面板
+- **彗尾效果** — 彗星靠近太陽時的粒子拖尾視覺效果
+
 ### 效能優化
 - **GPU Compute** — WebGPU compute shader 平行 SGP4，支援 10 萬+ 衛星（`perf/webgpu-sgp4` 分支開發中）
+- **WebGPU Kepler** — 小天體位置計算移至 compute shader，支援 100 萬+
 
 ## 相關專案
 
