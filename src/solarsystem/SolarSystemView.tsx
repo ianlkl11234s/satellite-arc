@@ -82,7 +82,15 @@ export function SolarSystemView({
   useEffect(() => { if (sceneRef.current) sceneRef.current.setJFCOrbitOpacity(jfcOrbitOpacity); }, [jfcOrbitOpacity]);
 
   // 小天體
-  useEffect(() => { if (sceneRef.current && smallBodies) sceneRef.current.setSmallBodies(smallBodies); }, [smallBodies]);
+  useEffect(() => {
+    if (!sceneRef.current || !smallBodies) return;
+    sceneRef.current.setSmallBodies(smallBodies);
+    // setSmallBodies 用硬編碼預設值建立粒子，需要立即套用當前 state
+    for (const [cls, size] of Object.entries(classSizes)) sceneRef.current.setClassSize(cls, size);
+    for (const [cls, op] of Object.entries(classOpacities)) sceneRef.current.setClassOpacity(cls, op);
+    if (classColors) for (const [cls, hex] of Object.entries(classColors)) sceneRef.current.setClassColors({ [cls]: hex });
+    for (const [cls, vis] of Object.entries(visibleClasses)) sceneRef.current.setClassVisibility(cls, vis);
+  }, [smallBodies]); // eslint-disable-line react-hooks/exhaustive-deps
   useEffect(() => {
     if (!sceneRef.current) return;
     for (const [cls, vis] of Object.entries(visibleClasses)) sceneRef.current.setClassVisibility(cls, vis);
