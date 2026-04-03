@@ -249,50 +249,26 @@ export interface SolarSidebarProps {
 /* ── Panel: Settings ───────────────────────── */
 
 function SettingsPanel(props: SolarSidebarProps) {
-  const [expandedClass, setExpandedClass] = useState<string | null>(null);
+  const [selectedClass, setSelectedClass] = useState<string>("MBA");
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
-      {/* 小天體分類 — 點擊展開各類別的粒子設定 */}
+      {/* ── 小天體分類（純淨列表，不內嵌滑桿） ── */}
       <div>
         <SectionHeader>Small Bodies</SectionHeader>
         {SMALL_BODY_CLASSES.map(({ key, label }) => {
           const active = props.visibleClasses[key] !== false;
           const count = props.classCounts[key] ?? 0;
           const color = props.colors[key] ?? DEFAULT_COLORS[key] ?? "#888";
-          const isExpanded = expandedClass === key;
           return (
-            <div key={key}>
-              <div style={{
-                display: "flex", alignItems: "center", gap: 8,
-                padding: "4px 0", cursor: "pointer",
-                opacity: active ? 1 : 0.4, transition: "opacity 0.15s",
-              }}>
-                <div onClick={() => props.onToggleClass(key)} style={{
-                  display: "flex", alignItems: "center", gap: 8, flex: 1,
-                }}>
-                  <div style={{ width: 8, height: 8, borderRadius: "50%", flexShrink: 0, background: color }} />
-                  <span style={{ fontSize: 13, fontFamily: T.FONT, flex: 1, color: active ? T.FONT_SECONDARY : T.DIM }}>{label}</span>
-                </div>
-                <span style={{ fontSize: 12, color: T.DIM, fontFamily: T.FONT, minWidth: 36, textAlign: "right" }}>
-                  {count > 0 ? count.toLocaleString() : "\u2014"}
-                </span>
-                <div onClick={() => setExpandedClass(isExpanded ? null : key)} style={{
-                  width: 20, height: 20, display: "flex", alignItems: "center", justifyContent: "center",
-                  cursor: "pointer", color: T.DIM,
-                }}>
-                  {isExpanded ? <ChevronDown size={12} /> : <ChevronRight size={12} />}
-                </div>
-              </div>
-              {/* 展開的個別設定 */}
-              {isExpanded && active && (
-                <div style={{ paddingLeft: 16, paddingBottom: 6 }}>
-                  <SliderRow label="Size" value={props.classSizes[key] ?? 0.12} min={0.03} max={0.5} step={0.01}
-                    format={(v) => v.toFixed(2)} onChange={(v) => props.onClassSizeChange(key, v)} />
-                  <SliderRow label="Opacity" value={props.classOpacities[key] ?? 0.5} min={0.05} max={1} step={0.05}
-                    format={(v) => `${Math.round(v * 100)}%`} onChange={(v) => props.onClassOpacityChange(key, v)} />
-                </div>
-              )}
+            <div key={key} onClick={() => props.onToggleClass(key)} style={{
+              display: "flex", alignItems: "center", gap: 8,
+              padding: "5px 0", cursor: "pointer",
+              opacity: active ? 1 : 0.35, transition: "opacity 0.15s",
+            }}>
+              <div style={{ width: 8, height: 8, borderRadius: "50%", flexShrink: 0, background: color }} />
+              <span style={{ fontSize: 13, fontFamily: T.FONT, flex: 1, color: active ? T.FONT_SECONDARY : T.DIM }}>{label}</span>
+              <span style={{ fontSize: 12, color: T.DIM, fontFamily: T.FONT }}>{count > 0 ? count.toLocaleString() : "\u2014"}</span>
             </div>
           );
         })}
@@ -300,41 +276,69 @@ function SettingsPanel(props: SolarSidebarProps) {
 
       <Divider />
 
-      {/* 軌道路徑 — 分三組 */}
-      <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-        <SectionHeader>Orbit Paths</SectionHeader>
-        <ToggleRow label="行星 / 矮行星" checked={props.showPlanetOrbits} onChange={props.onShowPlanetOrbitsChange} />
-        {props.showPlanetOrbits && (
-          <div style={{ paddingLeft: 16 }}>
-            <SliderRow label="Opacity" value={props.planetOrbitOpacity} min={0.05} max={1} step={0.05}
-              format={(v) => `${Math.round(v * 100)}%`} onChange={props.onPlanetOrbitOpacityChange} />
-          </div>
-        )}
-        <ToggleRow label="Halley-type Comets" checked={props.showHTCOrbits} onChange={props.onShowHTCOrbitsChange} />
-        {props.showHTCOrbits && (
-          <div style={{ paddingLeft: 16 }}>
-            <SliderRow label="Opacity" value={props.htcOrbitOpacity} min={0.05} max={0.5} step={0.05}
-              format={(v) => `${Math.round(v * 100)}%`} onChange={props.onHTCOrbitOpacityChange} />
-          </div>
-        )}
-        <ToggleRow label="Jupiter-family Comets" checked={props.showJFCOrbits} onChange={props.onShowJFCOrbitsChange} />
-        {props.showJFCOrbits && (
-          <div style={{ paddingLeft: 16 }}>
-            <SliderRow label="Opacity" value={props.jfcOrbitOpacity} min={0.05} max={0.5} step={0.05}
-              format={(v) => `${Math.round(v * 100)}%`} onChange={props.onJFCOrbitOpacityChange} />
-          </div>
-        )}
+      {/* ── 粒子視覺（下拉選擇類別） ── */}
+      <div>
+        <SectionHeader>Particle Visual</SectionHeader>
+        <select
+          value={selectedClass}
+          onChange={(e) => setSelectedClass(e.target.value)}
+          style={{
+            width: "100%", padding: "6px 10px", marginBottom: 10,
+            background: T.BG_ELEVATED, border: `1px solid ${T.BORDER}`,
+            borderRadius: 8, color: T.FONT_SECONDARY, fontFamily: T.FONT,
+            fontSize: 12, outline: "none", cursor: "pointer",
+            appearance: "none", WebkitAppearance: "none",
+            backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%236B7280' stroke-width='2'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E")`,
+            backgroundRepeat: "no-repeat",
+            backgroundPosition: "right 10px center",
+          }}
+        >
+          {SMALL_BODY_CLASSES.map(({ key, label }) => (
+            <option key={key} value={key}>{label}</option>
+          ))}
+        </select>
+        <SliderRow label="Size" value={props.classSizes[selectedClass] ?? 0.12} min={0.03} max={0.5} step={0.01}
+          format={(v) => v.toFixed(2)} onChange={(v) => props.onClassSizeChange(selectedClass, v)} />
+        <SliderRow label="Opacity" value={props.classOpacities[selectedClass] ?? 0.5} min={0.05} max={1} step={0.05}
+          format={(v) => `${Math.round(v * 100)}%`} onChange={(v) => props.onClassOpacityChange(selectedClass, v)} />
       </div>
 
       <Divider />
 
-      {/* 其他視覺 */}
+      {/* ── 軌道路徑 ── */}
+      <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+        <SectionHeader>Orbit Paths</SectionHeader>
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 2 }}>
+          <span style={{ fontSize: 13, fontFamily: T.FONT, color: T.FONT_SECONDARY }}>行星 / 矮行星</span>
+          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+            <span style={{ fontSize: 11, color: T.DIM }}>{Math.round(props.planetOrbitOpacity * 100)}%</span>
+            <ToggleSwitch checked={props.showPlanetOrbits} onChange={props.onShowPlanetOrbitsChange} />
+          </div>
+        </div>
+        {props.showPlanetOrbits && (
+          <input type="range" min={0.05} max={1} step={0.05} value={props.planetOrbitOpacity}
+            onChange={(e) => props.onPlanetOrbitOpacityChange(Number(e.target.value))}
+            style={{ width: "100%", height: 3, appearance: "none", WebkitAppearance: "none", background: T.SLIDER_TRACK, borderRadius: 2, outline: "none", cursor: "pointer", accentColor: T.ACCENT, marginBottom: 6 }} />
+        )}
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+          <span style={{ fontSize: 13, fontFamily: T.FONT, color: T.FONT_SECONDARY }}>HTC Comets</span>
+          <ToggleSwitch checked={props.showHTCOrbits} onChange={props.onShowHTCOrbitsChange} />
+        </div>
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+          <span style={{ fontSize: 13, fontFamily: T.FONT, color: T.FONT_SECONDARY }}>JFC Comets</span>
+          <ToggleSwitch checked={props.showJFCOrbits} onChange={props.onShowJFCOrbitsChange} />
+        </div>
+      </div>
+
+      <Divider />
+
+      {/* ── 行星顯示 ── */}
       <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-        <SectionHeader>Display</SectionHeader>
-        <ToggleRow label="Planet labels" checked={props.showLabels} onChange={props.onShowLabelsChange} />
-        <SliderRow label="Planet scale" value={props.planetScale} min={0.3} max={3} step={0.1}
+        <SectionHeader>Planets</SectionHeader>
+        <ToggleRow label="Labels" checked={props.showLabels} onChange={props.onShowLabelsChange} />
+        <SliderRow label="Scale" value={props.planetScale} min={0.3} max={3} step={0.1}
           format={(v) => `${v.toFixed(1)}\u00d7`} onChange={props.onPlanetScaleChange} />
-        <SliderRow label="Glow intensity" value={props.glowOpacity} min={0} max={1} step={0.05}
+        <SliderRow label="Glow" value={props.glowOpacity} min={0} max={1} step={0.05}
           format={(v) => `${Math.round(v * 100)}%`} onChange={props.onGlowOpacityChange} />
       </div>
     </div>
