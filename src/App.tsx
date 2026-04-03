@@ -12,6 +12,7 @@ import { InfoModal } from "./components/InfoModal";
 import { SolarSystemView } from "./solarsystem/SolarSystemView";
 import { getSolarBodyInfo, getTypeLabel } from "./solarsystem/solarBodyInfo";
 import { SolarSidebar } from "./components/SolarSidebar";
+import { SolarInfoModal } from "./components/SolarInfoModal";
 import { loadAllSmallBodies, type SmallBody } from "./data/smallBodyLoader";
 import { ViewModeToggle, type ViewMode } from "./components/ViewModeToggle";
 import { Play, Pause, X, LocateFixed, ChevronDown, ChevronUp } from "lucide-react";
@@ -124,6 +125,7 @@ export default function App() {
   });
   const [selectedBody, setSelectedBody] = useState<string | null>(null);
   const [bodyCardExpanded, setBodyCardExpanded] = useState(false);
+  const [showSolarInfo, setShowSolarInfo] = useState(false);
   const [pickedSmallBody, setPickedSmallBody] = useState<import("./data/smallBodyLoader").SmallBody | null>(null);
 
   const { isMobile } = useIsMobile();
@@ -435,6 +437,7 @@ export default function App() {
           onClassOpacityChange={(cls, v) => setClassOpacities((prev) => ({ ...prev, [cls]: v }))}
           colors={solarColors}
           onColorChange={(cls, color) => setSolarColors((prev) => ({ ...prev, [cls]: color }))}
+          onInfoClick={() => setShowSolarInfo(true)}
           isMobile={isMobile}
         />
       )}
@@ -870,6 +873,7 @@ export default function App() {
 
       {/* Info Modal */}
       {showInfo && <InfoModal onClose={() => setShowInfo(false)} />}
+      {showSolarInfo && <SolarInfoModal onClose={() => setShowSolarInfo(false)} />}
     </div>
   );
 }

@@ -4,7 +4,7 @@
  */
 
 import { useState, type ReactNode } from "react";
-import { SlidersHorizontal, Palette, BookOpen, X, Sun, ChevronDown, ChevronRight } from "lucide-react";
+import { SlidersHorizontal, Palette, BookOpen, Info, X, Sun, ChevronDown, ChevronRight } from "lucide-react";
 
 /* ── Design Tokens（與 Sidebar.tsx 一致） ─── */
 
@@ -242,6 +242,7 @@ export interface SolarSidebarProps {
   /** 各類小天體顏色 */
   colors: Record<string, string>;
   onColorChange: (cls: string, color: string) => void;
+  onInfoClick?: () => void;
   isMobile: boolean;
 }
 
@@ -571,6 +572,16 @@ export function SolarSidebar(props: SolarSidebarProps) {
               <Icon size={18} />
             </button>
           ))}
+
+          <div style={{ width: 1, height: 24, background: T.BORDER, margin: "0 2px", flexShrink: 0 }} />
+
+          <button title="使用指南" onClick={() => props.onInfoClick?.()} style={{
+            width: 40, height: 40, display: "flex", alignItems: "center", justifyContent: "center",
+            background: "transparent", border: "none", borderRadius: 8, cursor: "pointer",
+            color: T.FONT_TERTIARY, padding: 0,
+          }}>
+            <Info size={18} />
+          </button>
         </div>
 
         {panelContent}
@@ -612,6 +623,10 @@ export function SolarSidebar(props: SolarSidebarProps) {
             <Icon size={20} />
           </RailIcon>
         ))}
+        <div style={{ width: 32, height: 1, background: T.BORDER }} />
+        <RailIcon active={false} onClick={() => props.onInfoClick?.()} title="使用指南">
+          <Info size={20} />
+        </RailIcon>
       </div>
 
       {panelContent}
