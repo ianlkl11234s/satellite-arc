@@ -51,7 +51,7 @@ export function SolarSystemView({
     sceneRef.current = solar;
 
     const canvas = solar.renderer.domElement;
-    const onClick = (e: MouseEvent) => {
+    const onDblClick = (e: MouseEvent) => {
       const rect = canvas.getBoundingClientRect();
       const body = solar.pickBody(
         e.clientX - rect.left, e.clientY - rect.top,
@@ -59,10 +59,10 @@ export function SolarSystemView({
       );
       onClickRef.current?.(body, solar.lastPickedSmallBody);
     };
-    canvas.addEventListener("click", onClick);
+    canvas.addEventListener("dblclick", onDblClick);
 
     return () => {
-      canvas.removeEventListener("click", onClick);
+      canvas.removeEventListener("dblclick", onDblClick);
       solar.dispose();
       sceneRef.current = null;
     };
