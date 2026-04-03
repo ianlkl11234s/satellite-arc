@@ -16,9 +16,7 @@
 ### Solar System Mode
 ![Solar System Overview](screenshot/solar-overview.png)
 
-![Solar System Settings](screenshot/solar-settings.png)
-
-![Solar System Encyclopedia](screenshot/solar-encyclopedia.png)
+![Solar System Closeup — 86,549 小天體](screenshot/solar-closeup.png)
 
 ## 功能
 
