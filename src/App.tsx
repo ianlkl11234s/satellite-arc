@@ -129,6 +129,7 @@ export default function App() {
   const [showSolarInfo, setShowSolarInfo] = useState(false);
   const [solarLoading, setSolarLoading] = useState(false);
   const [solarLoadingMsg, setSolarLoadingMsg] = useState("");
+  const [modeTransition, setModeTransition] = useState(false);
   const [pickedSmallBody, setPickedSmallBody] = useState<import("./data/smallBodyLoader").SmallBody | null>(null);
 
   const { isMobile } = useIsMobile();
@@ -492,12 +493,13 @@ export default function App() {
       }}>
         {/* 模式切換 */}
         <ViewModeToggle mode={viewMode} onChange={(m) => {
+          setModeTransition(true);
           setViewMode(m);
-          // 切回地球時重設模擬時間（太陽系加速後時間會跑很遠，SGP4 會爆）
           simTimeRef.current = Date.now() / 1000;
-          // 切換時自動調整速度到合適範圍
-          if (m === "solar" && speed < 600) setSpeed(604800); // 1w/s
+          if (m === "solar" && speed < 600) setSpeed(604800);
           if (m === "earth" && speed > 600) setSpeed(60);
+          // 延遲清除過渡，讓新場景有時間初始化
+          setTimeout(() => setModeTransition(false), 800);
         }} />
 
         {/* 追蹤模式 */}
@@ -774,6 +776,29 @@ export default function App() {
           </div>
         );
       })()}
+
+      {/* 模式切換過渡 overlay */}
+      {modeTransition && (
+        <div style={{
+          position: "absolute", inset: 0, zIndex: 35,
+          display: "flex", alignItems: "center", justifyContent: "center",
+          background: "rgba(2,2,8,0.7)",
+          transition: "opacity 0.3s",
+          pointerEvents: "none",
+        }}>
+          <div style={{
+            display: "flex", alignItems: "center", gap: 14,
+            padding: "16px 28px",
+            background: "#12161ECC", backdropFilter: "blur(24px)",
+            borderRadius: 14, border: "1px solid rgba(91,156,246,0.3)",
+          }}>
+            <div style={{ width: 12, height: 12, borderRadius: "50%", background: "#5B9CF6", animation: "pulse 1s ease-in-out infinite" }} />
+            <span style={{ fontSize: 14, fontFamily: FONT, color: "rgba(255,255,255,0.8)" }}>
+              Switching...
+            </span>
+          </div>
+        </div>
+      )}
 
       {/* 太陽系載入 overlay */}
       {viewMode === "solar" && solarLoading && (
