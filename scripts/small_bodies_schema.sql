@@ -17,6 +17,7 @@ CREATE TABLE IF NOT EXISTS small_bodies (
   -- epoch 與週期
   epoch_jd DOUBLE PRECISION NOT NULL, -- 元素曆元 (Julian Date)
   period_days DOUBLE PRECISION,       -- 軌道週期 (天)，可由 a 計算
+  spec_type TEXT,                      -- 光譜分類: C(碳質)/S(石質)/M(金屬)/X(未定)
 
   created_at TIMESTAMPTZ DEFAULT now()
 );

@@ -84,10 +84,10 @@ export class SolarSystemScene {
   private sbCometOrbits: OrbitPath[] = []; // HTC/JFC from Supabase
 
   // 真實小天體粒子雲（替換假的 asteroidBelt）
-  // posArr = 當前顯示位置, targetArr = 下一個計算目標, prevArr = 上一個計算結果
   private smallBodyClouds: Map<string, {
     points: THREE.Points; bodies: SmallBody[];
     posArr: Float32Array; prevArr: Float32Array; targetArr: Float32Array;
+    colorArr?: Float32Array; // per-vertex color (for spectral mode)
   }> = new Map();
   private sbLerpT = 0;          // 內插進度 0..1
   private sbUpdateInterval = 60; // 每 N 幀計算一次目標位置
@@ -538,6 +538,21 @@ export class SolarSystemScene {
     if (cloud) (cloud.points.material as THREE.PointsMaterial).opacity = opacity;
   }
 
+  /** 切換 MBA 光譜分類著色模式 */
+  setSpectralMode(enabled: boolean) {
+    const cloud = this.smallBodyClouds.get("MBA");
+    if (!cloud) return;
+    const mat = cloud.points.material as THREE.PointsMaterial;
+    if (enabled && cloud.colorArr) {
+      mat.vertexColors = true;
+      mat.color.set(0xffffff); // vertexColors 模式下 material color 要白色
+    } else {
+      mat.vertexColors = false;
+      mat.color.set(0x888888); // 恢復預設灰色
+    }
+    mat.needsUpdate = true;
+  }
+
   /** 設定真實小天體資料（來自 Supabase），替換假的粒子 */
   setSmallBodies(grouped: Record<string, SmallBody[]>) {
     // 移除假的小行星帶
@@ -588,9 +603,30 @@ export class SolarSystemScene {
         depthWrite: false,
       });
 
+      // MBA 才建立 per-vertex color buffer（光譜分類著色）
+      let colorArr: Float32Array | undefined;
+      if (cls === "MBA") {
+        colorArr = new Float32Array(count * 3);
+        const SPEC_COLORS: Record<string, [number, number, number]> = {
+          C: [0.35, 0.55, 0.85],  // 藍色系（碳質，含水）
+          S: [0.85, 0.65, 0.35],  // 橘黃色系（石質）
+          M: [0.95, 0.85, 0.55],  // 金色系（金屬）
+          X: [0.6, 0.6, 0.6],    // 灰色（未定）
+        };
+        const DEFAULT_C: [number, number, number] = [0.53, 0.53, 0.53]; // 無分類灰色
+        for (let i = 0; i < count; i++) {
+          const spec = bodies[i].spec_type;
+          const c = (spec && SPEC_COLORS[spec]) || DEFAULT_C;
+          colorArr[i * 3] = c[0];
+          colorArr[i * 3 + 1] = c[1];
+          colorArr[i * 3 + 2] = c[2];
+        }
+        geo.setAttribute("color", new THREE.BufferAttribute(colorArr, 3));
+      }
+
       const points = new THREE.Points(geo, mat);
       this.scene.add(points);
-      this.smallBodyClouds.set(cls, { points, bodies, posArr, prevArr, targetArr });
+      this.smallBodyClouds.set(cls, { points, bodies, posArr, prevArr, targetArr, colorArr });
     }
 
     // 立即計算初始位置（填滿 prev + target + posArr）

@@ -20,6 +20,7 @@ export interface SmallBody {
   ma: number;
   epoch_jd: number;
   period_days: number;
+  spec_type?: string | null; // C(碳質)/S(石質)/M(金屬)/X(未定)
 }
 
 const PAGE_SIZE = 10000;
@@ -33,7 +34,7 @@ export async function loadSmallBodies(bodyClass: string): Promise<SmallBody[]> {
     return [];
   }
 
-  const baseUrl = `${SUPABASE_URL}/rest/v1/small_bodies?select=name,class,a,e,i,om,w,ma,epoch_jd,period_days&class=eq.${bodyClass}&order=id`;
+  const baseUrl = `${SUPABASE_URL}/rest/v1/small_bodies?select=name,class,a,e,i,om,w,ma,epoch_jd,period_days,spec_type&class=eq.${bodyClass}&order=id`;
   const all: SmallBody[] = [];
   let offset = 0;
 

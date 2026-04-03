@@ -25,6 +25,7 @@ export interface SolarSystemViewProps {
   classSizes: Record<string, number>;
   classOpacities: Record<string, number>;
   classColors?: Record<string, string>;
+  spectralMode: boolean;
   // 互動
   onBodyClick?: (name: string | null, smallBody?: SmallBody | null) => void;
   selectedBody?: string | null;
@@ -36,7 +37,7 @@ export function SolarSystemView({
   showPlanetOrbits, planetOrbitOpacity,
   showHTCOrbits, htcOrbitOpacity,
   showJFCOrbits, jfcOrbitOpacity,
-  smallBodies, visibleClasses, classSizes, classOpacities, classColors,
+  smallBodies, visibleClasses, classSizes, classOpacities, classColors, spectralMode,
   onBodyClick, selectedBody,
 }: SolarSystemViewProps) {
   const containerRef = useRef<HTMLDivElement>(null);
@@ -104,6 +105,7 @@ export function SolarSystemView({
     for (const [cls, op] of Object.entries(classOpacities)) sceneRef.current.setClassOpacity(cls, op);
   }, [classOpacities]);
   useEffect(() => { if (sceneRef.current && classColors) sceneRef.current.setClassColors(classColors); }, [classColors]);
+  useEffect(() => { if (sceneRef.current) sceneRef.current.setSpectralMode(spectralMode); }, [spectralMode]);
   useEffect(() => { if (sceneRef.current && selectedBody) sceneRef.current.flyToBody(selectedBody); }, [selectedBody]);
 
   return (

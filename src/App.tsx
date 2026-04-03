@@ -119,6 +119,7 @@ export default function App() {
   // 每類粒子設定
   const [classSizes, setClassSizes] = useState<Record<string, number>>({ MBA: 0.13, TJN: 0.18, NEO: 0.21, TNO: 0.40, CEN: 0.26, HTC: 0.50, JFC: 0.46 });
   const [classOpacities, setClassOpacities] = useState<Record<string, number>>({ MBA: 0.6, TJN: 0.8, NEO: 0.65, TNO: 1.0, CEN: 1.0, HTC: 1.0, JFC: 0.6 });
+  const [spectralMode, setSpectralMode] = useState(false);
   const [solarColors, setSolarColors] = useState<Record<string, string>>({
     MBA: "#888888", TJN: "#66aa66", NEO: "#ff4444",
     TNO: "#6688cc", CEN: "#bb88dd", HTC: "#88ccff", JFC: "#aaddaa",
@@ -367,6 +368,7 @@ export default function App() {
           classSizes={classSizes}
           classOpacities={classOpacities}
           classColors={solarColors}
+          spectralMode={spectralMode}
           onBodyClick={(name, sb) => { setSelectedBody(name); setBodyCardExpanded(false); setPickedSmallBody(sb ?? null); }}
           selectedBody={selectedBody}
         />
@@ -448,6 +450,8 @@ export default function App() {
           onClassOpacityChange={(cls, v) => setClassOpacities((prev) => ({ ...prev, [cls]: v }))}
           colors={solarColors}
           onColorChange={(cls, color) => setSolarColors((prev) => ({ ...prev, [cls]: color }))}
+          spectralMode={spectralMode}
+          onSpectralModeChange={setSpectralMode}
           onInfoClick={() => setShowSolarInfo(true)}
           isMobile={isMobile}
         />

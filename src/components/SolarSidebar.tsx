@@ -242,6 +242,8 @@ export interface SolarSidebarProps {
   /** 各類小天體顏色 */
   colors: Record<string, string>;
   onColorChange: (cls: string, color: string) => void;
+  spectralMode: boolean;
+  onSpectralModeChange: (v: boolean) => void;
   onInfoClick?: () => void;
   isMobile: boolean;
 }
@@ -279,6 +281,15 @@ function SettingsPanel(props: SolarSidebarProps) {
       {/* ── 粒子視覺（下拉選擇類別） ── */}
       <div>
         <SectionHeader>Particle Visual</SectionHeader>
+        <ToggleRow label="MBA 光譜分類著色" checked={props.spectralMode} onChange={props.onSpectralModeChange} />
+        {props.spectralMode && (
+          <div style={{ display: "flex", gap: 10, marginBottom: 8, fontSize: 11, color: T.DIM }}>
+            <span><span style={{ color: "#5a8fd8" }}>●</span> C 碳質</span>
+            <span><span style={{ color: "#d9a64a" }}>●</span> S 石質</span>
+            <span><span style={{ color: "#f2d96a" }}>●</span> M 金屬</span>
+            <span><span style={{ color: "#888" }}>●</span> 未分類</span>
+          </div>
+        )}
         <select
           value={selectedClass}
           onChange={(e) => setSelectedClass(e.target.value)}
