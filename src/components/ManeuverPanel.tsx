@@ -5,8 +5,8 @@
  * 點擊可飛到對應衛星位置，展開可看前後參數對比。
  */
 
-import { useState, useMemo } from "react";
-import { TrendingUp, ArrowUpDown, Circle, Clock, ChevronDown, ChevronUp } from "lucide-react";
+import { useState, useMemo, useCallback } from "react";
+import { TrendingUp, ArrowUpDown, Circle, Clock, ChevronDown, ChevronUp, Orbit, Zap } from "lucide-react";
 import type { SatelliteManeuver } from "../data/maneuverLoader";
 import { MANEUVER_TYPES } from "../data/maneuverLoader";
 
@@ -225,10 +225,13 @@ function ManeuverCard({ m, onSelect }: { m: SatelliteManeuver; onSelect?: () => 
 interface ManeuverPanelProps {
   maneuvers: SatelliteManeuver[];
   onSelectSatellite?: (noradId: number) => void;
+  onShowGroupOrbits?: (maneuvers: SatelliteManeuver[], show: boolean) => void;
+  onSpeedChange?: (speed: number) => void;
 }
 
-export function ManeuverPanel({ maneuvers, onSelectSatellite }: ManeuverPanelProps) {
+export function ManeuverPanel({ maneuvers, onSelectSatellite, onShowGroupOrbits, onSpeedChange }: ManeuverPanelProps) {
   const [filter, setFilter] = useState<FilterType>("ALL");
+  const [showOrbits, setShowOrbits] = useState(false);
 
   const counts = useMemo(() => {
     const c: Record<string, number> = { ALTITUDE_CHANGE: 0, PLANE_CHANGE: 0, SHAPE_CHANGE: 0 };
@@ -292,7 +295,14 @@ export function ManeuverPanel({ maneuvers, onSelectSatellite }: ManeuverPanelPro
         {FILTERS.map((f) => (
           <button
             key={f.key}
-            onClick={() => setFilter(f.key)}
+            onClick={() => {
+              setFilter(f.key);
+              // 篩選變更時更新群體軌道
+              if (showOrbits) {
+                const next = f.key === "ALL" ? maneuvers : maneuvers.filter((m) => m.maneuver_type === f.key);
+                onShowGroupOrbits?.(next, true);
+              }
+            }}
             style={{
               fontFamily: T.FONT, fontSize: 10, fontWeight: 500,
               padding: "3px 8px", borderRadius: 10,
@@ -305,6 +315,46 @@ export function ManeuverPanel({ maneuvers, onSelectSatellite }: ManeuverPanelPro
             {f.label}
           </button>
         ))}
+      </div>
+
+      {/* 軌道顯示 + 加速控制 */}
+      <div style={{ display: "flex", gap: 4, alignItems: "center", flexWrap: "wrap" }}>
+        <button
+          onClick={() => {
+            const next = !showOrbits;
+            setShowOrbits(next);
+            onShowGroupOrbits?.(filtered, next);
+          }}
+          style={{
+            fontFamily: T.FONT, fontSize: 10, fontWeight: 500,
+            padding: "3px 8px", borderRadius: 10, cursor: "pointer",
+            display: "flex", alignItems: "center", gap: 4,
+            border: `1px solid ${showOrbits ? "#4fc3f7" + "66" : T.BORDER}`,
+            background: showOrbits ? "#4fc3f7" + "18" : "transparent",
+            color: showOrbits ? "#4fc3f7" : T.FG3,
+            transition: "all 0.15s",
+          }}
+        >
+          <Orbit size={10} />
+          {showOrbits ? "隱藏軌道" : "顯示群體軌道"}
+        </button>
+        {showOrbits && (
+          <button
+            onClick={() => onSpeedChange?.(300)}
+            style={{
+              fontFamily: T.FONT, fontSize: 10, fontWeight: 500,
+              padding: "3px 8px", borderRadius: 10, cursor: "pointer",
+              display: "flex", alignItems: "center", gap: 4,
+              border: `1px solid ${T.BORDER}`,
+              background: "transparent",
+              color: "#ff9800",
+              transition: "all 0.15s",
+            }}
+          >
+            <Zap size={10} />
+            加速 300x
+          </button>
+        )}
       </div>
 
       {/* 結果計數 */}

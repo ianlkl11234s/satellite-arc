@@ -150,7 +150,7 @@ function propagate(
 /**
  * 為一顆衛星計算軌道弧線
  */
-function computeOrbitPath(
+export function computeOrbitPath(
   satrec: satellite.SatRec,
   startTime: Date,
   durationMin: number,
@@ -175,7 +175,7 @@ function computeOrbitPath(
  * 當兩個連續點的經度差 > 180°，表示跨越了換日線，
  * 需要在此處斷開成兩段 Flight，避免畫出橫跨整張地圖的直線。
  */
-function splitAtDateline(path: TrailPoint[]): TrailPoint[][] {
+export function splitAtDateline(path: TrailPoint[]): TrailPoint[][] {
   if (path.length < 2) return [path];
 
   const segments: TrailPoint[][] = [];

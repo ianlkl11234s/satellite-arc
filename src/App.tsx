@@ -2,10 +2,12 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { GlobeView, type CameraInfo, type CameraPreset, type GlobeViewHandle } from "./globe/GlobeView";
 import type { SatellitePosition } from "./globe/GlobeScene";
 import type { SatelliteTLE } from "./data/satelliteLoader";
-import { loadSatelliteTLEs, convertSatellitesToFlights, loadSatelliteCatalog, type SatelliteCatalog, CATEGORIES } from "./data/satelliteLoader";
+import { loadSatelliteTLEs, convertSatellitesToFlights, computeOrbitPath, splitAtDateline, loadSatelliteCatalog, type SatelliteCatalog, CATEGORIES } from "./data/satelliteLoader";
 import { getSatelliteInfo, ORBIT_TYPE_LABELS } from "./data/satelliteInfo";
 import { loadUpcomingLaunches, loadLaunchPads, type Launch, type LaunchPad } from "./data/launchLoader";
-import { loadSatelliteManeuvers, type SatelliteManeuver } from "./data/maneuverLoader";
+import { loadSatelliteManeuvers, loadHistoricalTLEs, type SatelliteManeuver } from "./data/maneuverLoader";
+import type { ComparisonOrbitPair } from "./globe/ComparisonOrbits";
+import * as satellite from "satellite.js";
 import { Sidebar } from "./components/Sidebar";
 import { useIsMobile } from "./hooks/useIsMobile";
 import { LoadingScreen } from "./components/LoadingScreen";
@@ -59,6 +61,7 @@ export default function App() {
   // 變軌分析
   const [maneuvers, setManeuvers] = useState<SatelliteManeuver[]>([]);
   const [analysisMode, setAnalysisMode] = useState(false);
+  const [comparisonOrbits, setComparisonOrbits] = useState<ComparisonOrbitPair[] | null>(null);
   const globeViewRef = useRef<GlobeViewHandle>(null);
   const [selectedLaunch, setSelectedLaunch] = useState<Launch | null>(null);
   const [flyToTarget, setFlyToTarget] = useState<{ lat: number; lng: number } | null>(null);
@@ -332,7 +335,77 @@ export default function App() {
       handleSatelliteClick(sat);
       setFlyToTarget({ lat: sat.lat, lng: sat.lng });
     }
-  }, [handleSatelliteClick]);
+
+    // 載入歷史 TLE 並計算對比軌道
+    const currentTle = tles.find((t) => t.norad_id === noradId);
+    if (!currentTle) return;
+
+    loadHistoricalTLEs(noradId, 5).then((history) => {
+      if (history.length < 2) return;
+      const now = new Date();
+
+      // 新軌道（當前 TLE）
+      try {
+        const newSatrec = satellite.twoline2satrec(currentTle.tle_line1, currentTle.tle_line2);
+        const newPath = computeOrbitPath(newSatrec, now, 90, 20);
+        const newSegments = splitAtDateline(newPath);
+        const afterPath = newSegments.length > 0 ? newSegments.reduce((a, b) => a.length > b.length ? a : b) : newPath;
+
+        // 舊軌道（前一次 TLE — history[1] 是倒數第二筆）
+        const oldTle = history[1];
+        if (!oldTle) { setComparisonOrbits(null); return; }
+
+        const oldSatrec = satellite.twoline2satrec(oldTle.tle_line1, oldTle.tle_line2);
+        const oldPath = computeOrbitPath(oldSatrec, now, 90, 20);
+        const oldSegments = splitAtDateline(oldPath);
+        const beforePath = oldSegments.length > 0 ? oldSegments.reduce((a, b) => a.length > b.length ? a : b) : oldPath;
+
+        setComparisonOrbits([{ before: beforePath, after: afterPath }]);
+      } catch {
+        setComparisonOrbits(null);
+      }
+    }).catch(() => setComparisonOrbits(null));
+  }, [handleSatelliteClick, tles]);
+
+  // 場景 2：群體軌道顯示
+  const handleShowGroupOrbits = useCallback((filteredManeuvers: SatelliteManeuver[], show: boolean) => {
+    if (!show || filteredManeuvers.length === 0) {
+      setComparisonOrbits(null);
+      return;
+    }
+    const COLORS: Record<string, string> = {
+      ALTITUDE_CHANGE: "#ff9800",
+      PLANE_CHANGE: "#ce93d8",
+      SHAPE_CHANGE: "#4fc3f7",
+    };
+    const now = new Date();
+    const pairs: ComparisonOrbitPair[] = [];
+    for (const m of filteredManeuvers) {
+      const tle = tles.find((t) => t.norad_id === m.norad_id);
+      if (!tle) continue;
+      try {
+        const satrec = satellite.twoline2satrec(tle.tle_line1, tle.tle_line2);
+        const path = computeOrbitPath(satrec, now, 90, 30);
+        const segments = splitAtDateline(path);
+        const longest = segments.length > 0 ? segments.reduce((a, b) => a.length > b.length ? a : b) : path;
+        if (longest.length >= 2) {
+          pairs.push({ before: null, after: longest, color: COLORS[m.maneuver_type] ?? "#ff9800" });
+        }
+      } catch { continue; }
+    }
+    setComparisonOrbits(pairs.length > 0 ? pairs : null);
+  }, [tles]);
+
+  // 場景 3：分析模式加速
+  const handleAnalysisSpeedChange = useCallback((spd: number) => {
+    setSpeed(spd);
+  }, []);
+
+  // 關閉分析模式時清除對比軌道
+  const handleAnalysisModeChange = useCallback((active: boolean) => {
+    setAnalysisMode(active);
+    if (!active) setComparisonOrbits(null);
+  }, []);
 
   const visibleCount = filteredTles.length;
 
@@ -401,6 +474,7 @@ export default function App() {
           noradIdFilter={analysisNoradFilter}
           highlightedIds={analysisHighlightIds}
           highlightColors={analysisHighlightColors}
+          comparisonOrbits={comparisonOrbits}
         />
       ) : (
         <SolarSystemView
@@ -472,7 +546,9 @@ export default function App() {
         }}
         maneuvers={maneuvers}
         onSelectManeuverSat={handleManeuverSelect}
-        onAnalysisModeChange={setAnalysisMode}
+        onAnalysisModeChange={handleAnalysisModeChange}
+        onShowGroupOrbits={handleShowGroupOrbits}
+        onAnalysisSpeedChange={handleAnalysisSpeedChange}
       />}
 
       {/* Solar System Sidebar */}

@@ -4,6 +4,7 @@
 
 import { useEffect, useRef, forwardRef, useImperativeHandle } from "react";
 import { GlobeScene, type SatellitePosition } from "./GlobeScene";
+import type { ComparisonOrbitPair } from "./ComparisonOrbits";
 import type { SatelliteTLE } from "../data/satelliteLoader";
 import type { LaunchPad, Launch } from "../data/launchLoader";
 
@@ -44,6 +45,7 @@ interface GlobeViewProps {
   noradIdFilter?: Set<number> | null;
   highlightedIds?: Set<string> | null;
   highlightColors?: Map<string, string> | null;
+  comparisonOrbits?: ComparisonOrbitPair[] | null;
 }
 
 export interface GlobeViewHandle {
@@ -66,6 +68,7 @@ export const GlobeView = forwardRef<GlobeViewHandle, GlobeViewProps>(function Gl
   launchPads, launches, showLaunchPads,
   flyToTarget, onFlyToDone,
   noradIdFilter, highlightedIds, highlightColors,
+  comparisonOrbits,
 }, ref) {
   const containerRef = useRef<HTMLDivElement>(null);
   const sceneRef = useRef<GlobeScene | null>(null);
@@ -135,6 +138,16 @@ export const GlobeView = forwardRef<GlobeViewHandle, GlobeViewProps>(function Gl
   useEffect(() => {
     if (sceneRef.current) sceneRef.current.setColors(colors);
   }, [colors]);
+
+  // 對比軌道
+  useEffect(() => {
+    if (!sceneRef.current) return;
+    if (comparisonOrbits && comparisonOrbits.length > 0) {
+      sceneRef.current.setComparisonOrbits(comparisonOrbits);
+    } else {
+      sceneRef.current.clearComparisonOrbits();
+    }
+  }, [comparisonOrbits]);
 
   // 分析模式：NORAD ID 過濾 + 高亮
   useEffect(() => {

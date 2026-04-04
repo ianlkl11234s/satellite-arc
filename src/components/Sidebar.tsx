@@ -66,6 +66,8 @@ export interface SidebarProps {
   maneuvers?: SatelliteManeuver[];
   onSelectManeuverSat?: (noradId: number) => void;
   onAnalysisModeChange?: (active: boolean) => void;
+  onShowGroupOrbits?: (maneuvers: SatelliteManeuver[], show: boolean) => void;
+  onAnalysisSpeedChange?: (speed: number) => void;
 }
 
 /* ── Design Tokens (from Pencil) ─────────────────────── */
@@ -808,7 +810,7 @@ export function Sidebar(props: SidebarProps) {
         {activePanel === "stats" && <StatsPanel {...props} />}
         {activePanel === "camera" && <CameraPanel {...props} />}
         {activePanel === "launches" && <LaunchPanel launches={props.launches ?? []} onFlyTo={(lat, lng, launch) => props.onFlyToLaunch?.(lat, lng, launch)} />}
-        {activePanel === "analysis" && <ManeuverPanel maneuvers={props.maneuvers ?? []} onSelectSatellite={(id) => props.onSelectManeuverSat?.(id)} />}
+        {activePanel === "analysis" && <ManeuverPanel maneuvers={props.maneuvers ?? []} onSelectSatellite={(id) => props.onSelectManeuverSat?.(id)} onShowGroupOrbits={(m, show) => props.onShowGroupOrbits?.(m, show)} onSpeedChange={(s) => props.onAnalysisSpeedChange?.(s)} />}
       </div>
     </div>
   );

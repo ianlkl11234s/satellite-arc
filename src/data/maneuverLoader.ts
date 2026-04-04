@@ -54,3 +54,27 @@ export async function loadSatelliteManeuvers(): Promise<SatelliteManeuver[]> {
 
   return resp.json();
 }
+
+export interface HistoricalTLE {
+  norad_id: number;
+  tle_line1: string;
+  tle_line2: string;
+  tle_epoch: string;
+  fetched_at: string;
+}
+
+/** 載入特定衛星的歷史 TLE（最近 N 筆，按時間倒序） */
+export async function loadHistoricalTLEs(noradId: number, limit = 10): Promise<HistoricalTLE[]> {
+  if (!SUPABASE_URL || !SUPABASE_ANON_KEY) return [];
+
+  const url = `${SUPABASE_URL}/rest/v1/satellite_tle_history?norad_id=eq.${noradId}&select=norad_id,tle_line1,tle_line2,tle_epoch,fetched_at&order=fetched_at.desc&limit=${limit}`;
+  const resp = await fetch(url, {
+    headers: {
+      apikey: SUPABASE_ANON_KEY,
+      Authorization: `Bearer ${SUPABASE_ANON_KEY}`,
+    },
+  });
+
+  if (!resp.ok) return [];
+  return resp.json();
+}

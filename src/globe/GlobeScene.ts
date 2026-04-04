@@ -7,6 +7,7 @@ import { OrbitControls } from "three/addons/controls/OrbitControls.js";
 import { EarthMesh } from "./EarthMesh";
 import { SatelliteOrbs } from "./SatelliteOrbs";
 import { OrbitLines } from "./OrbitLines";
+import { ComparisonOrbits, type ComparisonOrbitPair } from "./ComparisonOrbits";
 import { TrailLines, type TrailEntry } from "./TrailLines";
 import { geoToCartesian } from "./coordinates";
 import { LaunchPadMarkers } from "./LaunchPadMarkers";
@@ -37,6 +38,7 @@ export class GlobeScene {
   private earth: EarthMesh;
   private orbs: SatelliteOrbs;
   private orbits: OrbitLines;
+  private comparisonOrbits: ComparisonOrbits;
   private trails: TrailLines;
   private launchPads: LaunchPadMarkers;
   private animId = 0;
@@ -126,6 +128,7 @@ export class GlobeScene {
     this.orbs = new SatelliteOrbs(this.scene);
     this.orbits = new OrbitLines(this.scene);
     this.orbits.setVisible(false); // 靜態軌道預設關
+    this.comparisonOrbits = new ComparisonOrbits(this.scene);
     this.trails = new TrailLines(this.scene, 13000, 10);
     this.launchPads = new LaunchPadMarkers(this.scene);
 
@@ -162,6 +165,14 @@ export class GlobeScene {
     // 只顯示被篩選的軌道類型
     const filtered = orbits.filter((o) => this.visibleOrbitTypes.has(o.orbitType));
     this.orbits.update(filtered);
+  }
+
+  setComparisonOrbits(pairs: ComparisonOrbitPair[]) {
+    this.comparisonOrbits.update(pairs);
+  }
+
+  clearComparisonOrbits() {
+    this.comparisonOrbits.clear();
   }
 
   setVisibleOrbitTypes(types: Set<string>) {
