@@ -41,6 +41,9 @@ interface GlobeViewProps {
   showLaunchPads?: boolean;
   flyToTarget?: { lat: number; lng: number } | null;
   onFlyToDone?: () => void;
+  noradIdFilter?: Set<number> | null;
+  highlightedIds?: Set<string> | null;
+  highlightColors?: Map<string, string> | null;
 }
 
 export interface GlobeViewHandle {
@@ -62,6 +65,7 @@ export const GlobeView = forwardRef<GlobeViewHandle, GlobeViewProps>(function Gl
   cameraPreset, onPresetApplied, followMode,
   launchPads, launches, showLaunchPads,
   flyToTarget, onFlyToDone,
+  noradIdFilter, highlightedIds, highlightColors,
 }, ref) {
   const containerRef = useRef<HTMLDivElement>(null);
   const sceneRef = useRef<GlobeScene | null>(null);
@@ -131,6 +135,16 @@ export const GlobeView = forwardRef<GlobeViewHandle, GlobeViewProps>(function Gl
   useEffect(() => {
     if (sceneRef.current) sceneRef.current.setColors(colors);
   }, [colors]);
+
+  // 分析模式：NORAD ID 過濾 + 高亮
+  useEffect(() => {
+    if (sceneRef.current) sceneRef.current.noradIdFilter = noradIdFilter ?? null;
+  }, [noradIdFilter]);
+  useEffect(() => {
+    if (!sceneRef.current) return;
+    sceneRef.current.highlightedIds = highlightedIds ?? null;
+    sceneRef.current.highlightColors = highlightColors ?? null;
+  }, [highlightedIds, highlightColors]);
 
   // 相機預設視角
   useEffect(() => {

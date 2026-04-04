@@ -1,12 +1,12 @@
 /**
  * 軌道分析面板
  *
- * 顯示變軌衛星清單，包含摘要統計與篩選。
- * 點擊可飛到對應衛星位置。
+ * 顯示變軌衛星清單，包含摘要統計、篩選、時間標記。
+ * 點擊可飛到對應衛星位置，展開可看前後參數對比。
  */
 
 import { useState, useMemo } from "react";
-import { TrendingUp, ArrowUpDown, Circle } from "lucide-react";
+import { TrendingUp, ArrowUpDown, Circle, Clock, ChevronDown, ChevronUp } from "lucide-react";
 import type { SatelliteManeuver } from "../data/maneuverLoader";
 import { MANEUVER_TYPES } from "../data/maneuverLoader";
 
@@ -37,35 +37,99 @@ function TypeBadge({ type }: { type: string }) {
   );
 }
 
-function DeltaRow({ label, value, unit }: { label: string; value: number; unit: string }) {
-  if (Math.abs(value) < 1e-6) return null;
-  const sign = value > 0 ? "+" : "";
-  const color = Math.abs(value) > 0.1 ? "#ff9800" : T.FG3;
+function formatRelativeTime(dateStr: string): string {
+  const diff = Date.now() - new Date(dateStr).getTime();
+  if (diff < 0) return "剛剛";
+  const mins = Math.floor(diff / 60000);
+  if (mins < 60) return `${mins} 分鐘前`;
+  const hours = Math.floor(mins / 60);
+  if (hours < 24) return `${hours} 小時前`;
+  const days = Math.floor(hours / 24);
+  return `${days} 天前`;
+}
+
+function CompareRow({ label, prev, curr, unit, precision }: {
+  label: string; prev: number; curr: number; unit: string; precision: number;
+}) {
+  const delta = curr - prev;
+  if (Math.abs(delta) < Math.pow(10, -precision - 1)) return null;
+  const color = delta > 0 ? "#ff9800" : "#4caf50";
+  const arrow = delta > 0 ? "↑" : "↓";
   return (
-    <span style={{ fontSize: 10, color, fontVariantNumeric: "tabular-nums" }}>
-      {label}: {sign}{value.toFixed(4)}{unit}
-    </span>
+    <div style={{ display: "flex", alignItems: "center", fontSize: 10, fontFamily: T.FONT, gap: 4, padding: "2px 0" }}>
+      <span style={{ width: 60, color: T.FG3, flexShrink: 0 }}>{label}</span>
+      <span style={{ width: 70, color: T.FG3, textAlign: "right", fontVariantNumeric: "tabular-nums" }}>
+        {prev.toFixed(precision)}{unit}
+      </span>
+      <span style={{ color, fontWeight: 600, width: 16, textAlign: "center" }}>{arrow}</span>
+      <span style={{ width: 70, color: T.FG1, fontWeight: 600, textAlign: "right", fontVariantNumeric: "tabular-nums" }}>
+        {curr.toFixed(precision)}{unit}
+      </span>
+      <span style={{ color, fontSize: 9, fontWeight: 600, fontVariantNumeric: "tabular-nums" }}>
+        ({delta > 0 ? "+" : ""}{delta.toFixed(precision)})
+      </span>
+    </div>
   );
 }
 
+/** 產生白話描述：這顆衛星做了什麼 */
+function describeManeuver(m: SatelliteManeuver): string {
+  const parts: string[] = [];
+
+  // 週期/高度變化
+  if (Math.abs(m.delta_period_min) > 0.01) {
+    const approxAltKm = Math.abs(m.delta_period_min) * 27; // 粗估 LEO
+    if (m.delta_period_min > 0) {
+      parts.push(`軌道升高（≈+${approxAltKm.toFixed(0)} km），繞行速度變慢`);
+    } else {
+      parts.push(`軌道降低（≈-${approxAltKm.toFixed(0)} km），繞行速度變快`);
+    }
+  }
+
+  // 傾角變化
+  if (Math.abs(m.delta_inclination) > 0.005) {
+    if (m.delta_inclination > 0) {
+      parts.push("軌道面傾斜加大，可掃描更高緯度區域");
+    } else {
+      parts.push("軌道面傾斜縮小，更靠近赤道飛行");
+    }
+  }
+
+  // 離心率變化
+  if (Math.abs(m.delta_eccentricity) > 0.0005) {
+    if (m.delta_eccentricity > 0) {
+      parts.push("軌道變得更橢圓（最高點升高、最低點降低）");
+    } else {
+      parts.push("軌道變得更圓（高低點差距縮小）");
+    }
+  }
+
+  return parts.length > 0 ? parts.join("；") : "微幅參數調整";
+}
+
 function ManeuverCard({ m, onSelect }: { m: SatelliteManeuver; onSelect?: () => void }) {
+  const [expanded, setExpanded] = useState(false);
+  const description = describeManeuver(m);
+  const typeColor = MANEUVER_TYPES[m.maneuver_type]?.color ?? "#6B7280";
+
   return (
     <div
-      onClick={onSelect}
       style={{
         fontFamily: T.FONT,
         background: "rgba(255,255,255,0.03)",
         borderRadius: 6,
         padding: "8px 10px",
-        cursor: "pointer",
         border: `1px solid ${T.BORDER}`,
         transition: "background 0.15s",
       }}
       onMouseEnter={(e) => { e.currentTarget.style.background = "rgba(255,255,255,0.07)"; }}
       onMouseLeave={(e) => { e.currentTarget.style.background = "rgba(255,255,255,0.03)"; }}
     >
-      {/* 第一行：名稱 + 類型 */}
-      <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 4 }}>
+      {/* 第一行：名稱 + 類型（點擊飛到衛星） */}
+      <div
+        onClick={onSelect}
+        style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 4, cursor: "pointer" }}
+      >
         <span style={{
           fontSize: 12, fontWeight: 600, color: T.FG1, flex: 1,
           overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
@@ -75,8 +139,8 @@ function ManeuverCard({ m, onSelect }: { m: SatelliteManeuver; onSelect?: () => 
         <TypeBadge type={m.maneuver_type} />
       </div>
 
-      {/* 第二行：星座 + 軌道類型 */}
-      <div style={{ display: "flex", gap: 10, fontSize: 10, color: T.FG3, marginBottom: 4 }}>
+      {/* 第二行：星座 + 軌道類型 + 偵測時間 */}
+      <div style={{ display: "flex", gap: 8, fontSize: 10, color: T.FG3, marginBottom: 4, alignItems: "center" }}>
         {m.constellation && (
           <span style={{ display: "flex", alignItems: "center", gap: 3 }}>
             <Circle size={6} fill={T.ACCENT} stroke="none" />
@@ -84,14 +148,76 @@ function ManeuverCard({ m, onSelect }: { m: SatelliteManeuver; onSelect?: () => 
           </span>
         )}
         <span>{m.orbit_type}</span>
+        <span style={{ marginLeft: "auto", display: "flex", alignItems: "center", gap: 3 }}>
+          <Clock size={9} />
+          {formatRelativeTime(m.curr_fetched_at)}
+        </span>
       </div>
 
-      {/* 第三行：Delta 值 */}
-      <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
-        <DeltaRow label="ΔPeriod" value={m.delta_period_min} unit=" min" />
-        <DeltaRow label="ΔInc" value={m.delta_inclination} unit="°" />
-        <DeltaRow label="ΔEcc" value={m.delta_eccentricity} unit="" />
+      {/* 白話描述 */}
+      <div style={{
+        fontSize: 11, color: typeColor, lineHeight: 1.5,
+        padding: "4px 8px", marginBottom: 4, borderRadius: 4,
+        background: typeColor + "12",
+        borderLeft: `2px solid ${typeColor}66`,
+      }}>
+        {description}
       </div>
+
+      {/* 展開/收合按鈕 */}
+      <div
+        onClick={() => setExpanded(!expanded)}
+        style={{
+          display: "flex", alignItems: "center", gap: 4,
+          cursor: "pointer", fontSize: 10, color: T.ACCENT,
+          marginTop: 2,
+        }}
+      >
+        {expanded ? <ChevronUp size={12} /> : <ChevronDown size={12} />}
+        {expanded ? "收合" : "查看數值對比"}
+      </div>
+
+      {/* 展開：前後參數對比 */}
+      {expanded && (
+        <div style={{
+          marginTop: 6, padding: "6px 8px", borderRadius: 4,
+          background: "rgba(255,255,255,0.03)",
+          border: `1px solid ${T.BORDER}`,
+        }}>
+          {/* 表頭 */}
+          <div style={{ display: "flex", fontSize: 9, color: T.FG3, gap: 4, marginBottom: 4, fontFamily: T.FONT }}>
+            <span style={{ width: 60 }} />
+            <span style={{ width: 70, textAlign: "right" }}>變軌前</span>
+            <span style={{ width: 16 }} />
+            <span style={{ width: 70, textAlign: "right" }}>變軌後</span>
+          </div>
+          <CompareRow
+            label="週期"
+            prev={m.curr_period_min - m.delta_period_min}
+            curr={m.curr_period_min}
+            unit=" min" precision={2}
+          />
+          <CompareRow
+            label="傾角"
+            prev={m.curr_inclination - m.delta_inclination}
+            curr={m.curr_inclination}
+            unit="°" precision={2}
+          />
+          <CompareRow
+            label="離心率"
+            prev={m.curr_eccentricity - m.delta_eccentricity}
+            curr={m.curr_eccentricity}
+            unit="" precision={6}
+          />
+          {/* Epoch 時間 */}
+          <div style={{ display: "flex", fontSize: 9, color: T.FG3, gap: 4, marginTop: 6, fontFamily: T.FONT }}>
+            <span style={{ width: 60 }}>Epoch</span>
+            <span>{m.prev_epoch}</span>
+            <span style={{ color: T.ACCENT }}>→</span>
+            <span>{m.curr_epoch}</span>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
@@ -181,10 +307,10 @@ export function ManeuverPanel({ maneuvers, onSelectSatellite }: ManeuverPanelPro
         ))}
       </div>
 
-      {/* 排序提示 */}
+      {/* 結果計數 */}
       <div style={{ display: "flex", alignItems: "center", gap: 4, fontSize: 10, color: T.FG3, fontFamily: T.FONT }}>
         <ArrowUpDown size={10} />
-        {filtered.length} 筆結果
+        {filtered.length} 筆結果 · 僅顯示變軌衛星
       </div>
 
       {/* 衛星清單 */}

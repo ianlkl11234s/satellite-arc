@@ -58,6 +58,7 @@ export default function App() {
 
   // 變軌分析
   const [maneuvers, setManeuvers] = useState<SatelliteManeuver[]>([]);
+  const [analysisMode, setAnalysisMode] = useState(false);
   const globeViewRef = useRef<GlobeViewHandle>(null);
   const [selectedLaunch, setSelectedLaunch] = useState<Launch | null>(null);
   const [flyToTarget, setFlyToTarget] = useState<{ lat: number; lng: number } | null>(null);
@@ -199,6 +200,31 @@ export default function App() {
       return true;
     });
   }, [tles, visibleCategories, visibleConstellations, visibleCountries]);
+
+  // 分析模式：計算 NORAD ID 過濾集 + 高亮色
+  const analysisNoradFilter = useMemo(() => {
+    if (!analysisMode || maneuvers.length === 0) return null;
+    return new Set(maneuvers.map((m) => m.norad_id));
+  }, [analysisMode, maneuvers]);
+
+  const analysisHighlightIds = useMemo(() => {
+    if (!analysisMode || maneuvers.length === 0) return null;
+    return new Set(maneuvers.map((m) => `sat_${m.norad_id}`));
+  }, [analysisMode, maneuvers]);
+
+  const analysisHighlightColors = useMemo(() => {
+    if (!analysisMode || maneuvers.length === 0) return null;
+    const COLORS: Record<string, string> = {
+      ALTITUDE_CHANGE: "#ff9800",
+      PLANE_CHANGE: "#ce93d8",
+      SHAPE_CHANGE: "#4fc3f7",
+    };
+    const map = new Map<string, string>();
+    for (const m of maneuvers) {
+      map.set(`sat_${m.norad_id}`, COLORS[m.maneuver_type] ?? "#ff9800");
+    }
+    return map;
+  }, [analysisMode, maneuvers]);
 
   // 軌道弧線（非同步計算，避免凍結 UI）
   const [orbits, setOrbits] = useState<Array<{ path: [number, number, number, number][]; orbitType: string }>>([]);
@@ -372,6 +398,9 @@ export default function App() {
           showLaunchPads={showLaunchPads}
           flyToTarget={flyToTarget}
           onFlyToDone={handleFlyToDone}
+          noradIdFilter={analysisNoradFilter}
+          highlightedIds={analysisHighlightIds}
+          highlightColors={analysisHighlightColors}
         />
       ) : (
         <SolarSystemView
@@ -443,6 +472,7 @@ export default function App() {
         }}
         maneuvers={maneuvers}
         onSelectManeuverSat={handleManeuverSelect}
+        onAnalysisModeChange={setAnalysisMode}
       />}
 
       {/* Solar System Sidebar */}

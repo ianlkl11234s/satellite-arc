@@ -3,7 +3,7 @@
  * 對齊 Pencil 設計稿
  */
 
-import { useState, useMemo, type ReactNode } from "react";
+import { useState, useMemo, useRef, useEffect, type ReactNode } from "react";
 import type { SatelliteTLE } from "../data/satelliteLoader";
 import { CATEGORIES, categoryLabel } from "../data/satelliteLoader";
 import {
@@ -65,6 +65,7 @@ export interface SidebarProps {
   onFlyToLaunch?: (lat: number, lng: number, launch?: Launch) => void;
   maneuvers?: SatelliteManeuver[];
   onSelectManeuverSat?: (noradId: number) => void;
+  onAnalysisModeChange?: (active: boolean) => void;
 }
 
 /* ── Design Tokens (from Pencil) ─────────────────────── */
@@ -759,6 +760,17 @@ export function Sidebar(props: SidebarProps) {
     setActivePanel((p) => p === id ? null : id);
     if (!hasOpenedOnce) setHasOpenedOnce(true);
   };
+
+  // 分析模式開關通知（避免在 render 中觸發父組件 setState）
+  const prevPanelRef = useRef<PanelId | null>(null);
+  useEffect(() => {
+    const wasAnalysis = prevPanelRef.current === "analysis";
+    const isAnalysis = activePanel === "analysis";
+    if (wasAnalysis !== isAnalysis) {
+      props.onAnalysisModeChange?.(isAnalysis);
+    }
+    prevPanelRef.current = activePanel;
+  }, [activePanel, props.onAnalysisModeChange]);
 
   const panelContent = activePanel && (
     <div style={{

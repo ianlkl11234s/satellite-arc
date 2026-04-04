@@ -71,6 +71,9 @@ export class GlobeScene {
   constellationFilter: Set<string> | null = null;
   countryFilter: Set<string> | null = null;
   countryMap: Record<string, string> = {};
+  noradIdFilter: Set<number> | null = null;
+  highlightedIds: Set<string> | null = null;
+  highlightColors: Map<string, string> | null = null;
 
   // 視覺參數
   showTrails = true;
@@ -412,6 +415,10 @@ export class GlobeScene {
           this.positionCache.delete(i);
           continue;
         }
+        if (this.noradIdFilter && !this.noradIdFilter.has(tle.norad_id)) {
+          this.positionCache.delete(i);
+          continue;
+        }
 
         const satrec = this.satRecs[i];
         if (!satrec) continue;
@@ -443,7 +450,7 @@ export class GlobeScene {
       // 從快取組裝完整的 entries
       const entries = [...this.positionCache.values()];
       this.lastPositions = entries;
-      this.orbs.update(entries, elapsed);
+      this.orbs.update(entries, elapsed, this.highlightedIds, this.highlightColors);
 
       // 記錄歷史位置到環形緩衝區（每 N 幀記錄一次）
       this.historyWriteCounter++;

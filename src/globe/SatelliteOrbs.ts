@@ -56,6 +56,7 @@ export class SatelliteOrbs {
   }
 
   private _colorCache = new Map<string, THREE.Color>();
+  private _lastHighlightColors: Map<string, string> | null = null;
 
   constructor(scene: THREE.Scene) {
     const sphereGeo = new THREE.SphereGeometry(1, 8, 8);
@@ -111,15 +112,33 @@ export class SatelliteOrbs {
     }
   }
 
-  update(entries: SatelliteEntry[], time: number) {
+  private _highlightColorCache = new Map<string, THREE.Color>();
+
+  update(entries: SatelliteEntry[], time: number, highlightedIds?: Set<string> | null, highlightColors?: Map<string, string> | null) {
     const count = Math.min(entries.length, MAX_INSTANCES);
 
-    for (let i = 0; i < count; i++) {
-      const { x, y, z, orbitType } = entries[i]!;
-      const phase = this.phaseOffsets[i]!;
-      const pulse = 1.0 + Math.sin(time * 1.5 + phase) * 0.15;
+    // 預轉換 highlight 顏色
+    if (highlightColors && highlightColors !== this._lastHighlightColors) {
+      this._highlightColorCache.clear();
+      for (const [id, hex] of highlightColors) {
+        this._highlightColorCache.set(id, new THREE.Color(hex));
+      }
+      this._lastHighlightColors = highlightColors;
+    }
 
-      const color = this._colorCache.get(orbitType) ?? ORBIT_TYPE_COLORS[orbitType] ?? DEFAULT_COLOR;
+    for (let i = 0; i < count; i++) {
+      const { id, x, y, z, orbitType } = entries[i]!;
+      const phase = this.phaseOffsets[i]!;
+      const isHighlighted = highlightedIds?.has(id) ?? false;
+
+      // 高亮衛星：更大的脈動 + 更快頻率
+      const pulse = isHighlighted
+        ? 1.4 + Math.sin(time * 3.0 + phase) * 0.4
+        : 1.0 + Math.sin(time * 1.5 + phase) * 0.15;
+
+      // 高亮衛星用變軌類型色，否則用原色
+      const highlightColor = this._highlightColorCache.get(id);
+      const color = highlightColor ?? this._colorCache.get(orbitType) ?? ORBIT_TYPE_COLORS[orbitType] ?? DEFAULT_COLOR;
 
       // Core
       const coreScale = 0.004 * pulse * this.baseScale;
@@ -129,13 +148,13 @@ export class SatelliteOrbs {
       this.core.setMatrixAt(i, this.dummy.matrix);
 
       // Glow 1
-      this.dummy.scale.setScalar(coreScale * 2.5);
+      this.dummy.scale.setScalar(coreScale * (isHighlighted ? 3.5 : 2.5));
       this.dummy.updateMatrix();
       this.glow1.setMatrixAt(i, this.dummy.matrix);
       this.glow1.instanceColor!.setXYZ(i, color.r, color.g, color.b);
 
       // Glow 2
-      this.dummy.scale.setScalar(coreScale * 5);
+      this.dummy.scale.setScalar(coreScale * (isHighlighted ? 7 : 5));
       this.dummy.updateMatrix();
       this.glow2.setMatrixAt(i, this.dummy.matrix);
       this.glow2.instanceColor!.setXYZ(i, color.r, color.g, color.b);
