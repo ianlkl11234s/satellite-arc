@@ -2,7 +2,7 @@
  * 3D 地球 React 容器
  */
 
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, forwardRef, useImperativeHandle } from "react";
 import { GlobeScene, type SatellitePosition } from "./GlobeScene";
 import type { SatelliteTLE } from "../data/satelliteLoader";
 import type { LaunchPad, Launch } from "../data/launchLoader";
@@ -43,13 +43,17 @@ interface GlobeViewProps {
   onFlyToDone?: () => void;
 }
 
+export interface GlobeViewHandle {
+  findSatelliteById(id: string): SatellitePosition | null;
+}
+
 const CONSTELLATION_COUNTRY: Record<string, string> = {
   Starlink: "美國", OneWeb: "英國", GPS: "美國", Galileo: "歐盟",
   BeiDou: "中國", GLONASS: "俄羅斯", Iridium: "美國", Globalstar: "美國",
   Orbcomm: "美國", Planet: "美國", Spire: "美國", COSMOS: "俄羅斯", Qianfan: "中國",
 };
 
-export function GlobeView({
+export const GlobeView = forwardRef<GlobeViewHandle, GlobeViewProps>(function GlobeView({
   tles, orbits, getCurrentTime,
   visibleOrbitTypes, showTrails, showOrbits, showDayNight,
   orbitOpacity, orbScale, orbOpacity, trailLength,
@@ -58,13 +62,19 @@ export function GlobeView({
   cameraPreset, onPresetApplied, followMode,
   launchPads, launches, showLaunchPads,
   flyToTarget, onFlyToDone,
-}: GlobeViewProps) {
+}, ref) {
   const containerRef = useRef<HTMLDivElement>(null);
   const sceneRef = useRef<GlobeScene | null>(null);
   const onClickRef = useRef(onSatelliteClick);
   const onCameraRef = useRef(onCameraChange);
   onClickRef.current = onSatelliteClick;
   onCameraRef.current = onCameraChange;
+
+  useImperativeHandle(ref, () => ({
+    findSatelliteById(id: string) {
+      return sceneRef.current?.lastPositions.find((p) => p.id === id) ?? null;
+    },
+  }));
 
   useEffect(() => {
     if (!containerRef.current) return;
@@ -157,4 +167,4 @@ export function GlobeView({
   return (
     <div ref={containerRef} style={{ position: "absolute", inset: 0, width: "100%", height: "100%", cursor: "grab" }} />
   );
-}
+});

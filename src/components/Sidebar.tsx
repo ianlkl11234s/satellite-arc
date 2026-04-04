@@ -18,11 +18,14 @@ import {
   Camera,
   Info,
   Rocket,
+  Activity,
 } from "lucide-react";
 import type { Launch } from "../data/launchLoader";
 import { LaunchPanel } from "./LaunchPanel";
+import type { SatelliteManeuver } from "../data/maneuverLoader";
+import { ManeuverPanel } from "./ManeuverPanel";
 
-type PanelId = "settings" | "filters" | "colors" | "stats" | "camera" | "launches";
+type PanelId = "settings" | "filters" | "colors" | "stats" | "camera" | "launches" | "analysis";
 
 export interface SidebarProps {
   tles: SatelliteTLE[];
@@ -60,6 +63,8 @@ export interface SidebarProps {
   isMobile?: boolean;
   launches?: Launch[];
   onFlyToLaunch?: (lat: number, lng: number, launch?: Launch) => void;
+  maneuvers?: SatelliteManeuver[];
+  onSelectManeuverSat?: (noradId: number) => void;
 }
 
 /* ── Design Tokens (from Pencil) ─────────────────────── */
@@ -728,6 +733,7 @@ const PANEL_WIDTH: Record<PanelId, number> = {
   stats: 300,
   camera: 240,
   launches: 320,
+  analysis: 330,
 };
 
 /* ── Main Panel Titles ───────────────────────────────── */
@@ -739,6 +745,7 @@ const PANELS: Array<{ id: PanelId; icon: (props: { size: number }) => ReactNode;
   { id: "stats", icon: (_props: { size: number }) => <IconBarChart />, title: "統計" },
   { id: "camera", icon: ({ size }) => <Camera size={size} />, title: "視角" },
   { id: "launches", icon: ({ size }) => <Rocket size={size} />, title: "發射時程" },
+  { id: "analysis", icon: ({ size }) => <Activity size={size} />, title: "軌道分析" },
 ];
 
 /* ── Main Component ──────────────────────────────────── */
@@ -789,6 +796,7 @@ export function Sidebar(props: SidebarProps) {
         {activePanel === "stats" && <StatsPanel {...props} />}
         {activePanel === "camera" && <CameraPanel {...props} />}
         {activePanel === "launches" && <LaunchPanel launches={props.launches ?? []} onFlyTo={(lat, lng, launch) => props.onFlyToLaunch?.(lat, lng, launch)} />}
+        {activePanel === "analysis" && <ManeuverPanel maneuvers={props.maneuvers ?? []} onSelectSatellite={(id) => props.onSelectManeuverSat?.(id)} />}
       </div>
     </div>
   );

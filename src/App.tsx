@@ -1,10 +1,11 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { GlobeView, type CameraInfo, type CameraPreset } from "./globe/GlobeView";
+import { GlobeView, type CameraInfo, type CameraPreset, type GlobeViewHandle } from "./globe/GlobeView";
 import type { SatellitePosition } from "./globe/GlobeScene";
 import type { SatelliteTLE } from "./data/satelliteLoader";
 import { loadSatelliteTLEs, convertSatellitesToFlights, loadSatelliteCatalog, type SatelliteCatalog, CATEGORIES } from "./data/satelliteLoader";
 import { getSatelliteInfo, ORBIT_TYPE_LABELS } from "./data/satelliteInfo";
 import { loadUpcomingLaunches, loadLaunchPads, type Launch, type LaunchPad } from "./data/launchLoader";
+import { loadSatelliteManeuvers, type SatelliteManeuver } from "./data/maneuverLoader";
 import { Sidebar } from "./components/Sidebar";
 import { useIsMobile } from "./hooks/useIsMobile";
 import { LoadingScreen } from "./components/LoadingScreen";
@@ -54,6 +55,10 @@ export default function App() {
   // 發射資料
   const [launches, setLaunches] = useState<Launch[]>([]);
   const [launchPads, setLaunchPads] = useState<LaunchPad[]>([]);
+
+  // 變軌分析
+  const [maneuvers, setManeuvers] = useState<SatelliteManeuver[]>([]);
+  const globeViewRef = useRef<GlobeViewHandle>(null);
   const [selectedLaunch, setSelectedLaunch] = useState<Launch | null>(null);
   const [flyToTarget, setFlyToTarget] = useState<{ lat: number; lng: number } | null>(null);
   const [orbitOpacity, setOrbitOpacity] = useState(0.35);
@@ -153,6 +158,13 @@ export default function App() {
     Promise.all([loadUpcomingLaunches(), loadLaunchPads()])
       .then(([l, p]) => { setLaunches(l); setLaunchPads(p); })
       .catch((err) => console.warn("Launch data load failed:", err));
+  }, []);
+
+  // 載入變軌分析資料（非阻塞，背景載入）
+  useEffect(() => {
+    loadSatelliteManeuvers()
+      .then(setManeuvers)
+      .catch((err) => console.warn("Maneuver data load failed:", err));
   }, []);
 
   // 載入小天體資料（進入太陽系模式時載入一次）
@@ -287,6 +299,15 @@ export default function App() {
     }
   }, []);
 
+  const handleManeuverSelect = useCallback((noradId: number) => {
+    const satId = `sat_${noradId}`;
+    const sat = globeViewRef.current?.findSatelliteById(satId);
+    if (sat) {
+      handleSatelliteClick(sat);
+      setFlyToTarget({ lat: sat.lat, lng: sat.lng });
+    }
+  }, [handleSatelliteClick]);
+
   const visibleCount = filteredTles.length;
 
   // 淡出過渡：ready 後延遲移除 loading overlay
@@ -325,6 +346,7 @@ export default function App() {
       )}
       {viewMode === "earth" ? (
         <GlobeView
+          ref={globeViewRef}
           tles={tles}
           orbits={orbits}
           getCurrentTime={getCurrentTime}
@@ -419,6 +441,8 @@ export default function App() {
           setCatalog(null);
           setFollowMode(false);
         }}
+        maneuvers={maneuvers}
+        onSelectManeuverSat={handleManeuverSelect}
       />}
 
       {/* Solar System Sidebar */}
