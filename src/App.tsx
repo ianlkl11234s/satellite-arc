@@ -20,6 +20,7 @@ import { loadAllSmallBodies, type SmallBody } from "./data/smallBodyLoader";
 import { ViewModeToggle, type ViewMode } from "./components/ViewModeToggle";
 import { Play, Pause, X, LocateFixed, ChevronDown, ChevronUp } from "lucide-react";
 import { StoryMode } from "./story/StoryMode";
+import { Dashboard } from "./dashboard/Dashboard";
 
 const SPEED_OPTIONS = [10, 60, 300, 600];
 const SOLAR_SPEED_OPTIONS = [600, 3600, 86400, 604800, 2592000]; // 10min, 1hr, 1day, 1week, 1month per second
@@ -41,18 +42,19 @@ function InfoRow({ label, value }: { label: string; value: React.ReactNode }) {
 }
 
 export default function App() {
-  // Hash-based story mode routing
-  const [storyMode, setStoryMode] = useState(() => window.location.hash === "#story");
+  // Hash-based routing
+  const [route, setRoute] = useState(() => window.location.hash);
 
   useEffect(() => {
-    const onHash = () => setStoryMode(window.location.hash === "#story");
+    const onHash = () => setRoute(window.location.hash);
     window.addEventListener("hashchange", onHash);
     return () => window.removeEventListener("hashchange", onHash);
   }, []);
 
-  if (storyMode) {
-    return <StoryMode onExit={() => { window.location.hash = ""; setStoryMode(false); }} />;
-  }
+  const exitRoute = () => { window.location.hash = ""; setRoute(""); };
+
+  if (route === "#story") return <StoryMode onExit={exitRoute} />;
+  if (route === "#dashboard") return <Dashboard onExit={exitRoute} />;
 
   const [tles, setTles] = useState<SatelliteTLE[]>([]);
   const [loading, setLoading] = useState(true);
