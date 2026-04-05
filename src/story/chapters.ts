@@ -24,6 +24,18 @@ export interface StoryChapter {
   speed?: number;
   /** 強調色 */
   accentColor?: string;
+  /** 內嵌圖表類型 */
+  infographic?: {
+    type: "orbit-plane-shift" | "altitude-chart";
+    /** orbit-plane-shift 參數 */
+    prevInclination?: number;
+    currInclination?: number;
+    count?: number;
+    /** altitude-chart 參數 */
+    mode?: "ascent" | "deorbit";
+    satellites?: { name: string; fromAlt: number; toAlt: number }[];
+    yRange?: [number, number];
+  };
 }
 
 /** 2026-04-04 Starlink 動態故事 */
@@ -49,6 +61,12 @@ export const STARLINK_STORY_0404: StoryChapter[] = [
     showOrbits: true,
     speed: 60,
     accentColor: "#ce93d8",
+    infographic: {
+      type: "orbit-plane-shift",
+      prevInclination: 52.98,
+      currInclination: 53.0,
+      count: 121,
+    },
   },
   {
     id: "coordinated-ascent",
@@ -61,6 +79,25 @@ export const STARLINK_STORY_0404: StoryChapter[] = [
     showOrbits: true,
     speed: 300,
     accentColor: "#ff9800",
+    infographic: {
+      type: "altitude-chart",
+      mode: "ascent",
+      yRange: [250, 600],
+      satellites: [
+        { name: "SL-37133", fromAlt: 340, toAlt: 550 },
+        { name: "SL-37156", fromAlt: 335, toAlt: 548 },
+        { name: "SL-37162", fromAlt: 338, toAlt: 550 },
+        { name: "SL-37163", fromAlt: 342, toAlt: 551 },
+        { name: "SL-37145", fromAlt: 336, toAlt: 549 },
+        { name: "SL-37151", fromAlt: 340, toAlt: 550 },
+        { name: "SL-37148", fromAlt: 337, toAlt: 548 },
+        { name: "SL-37155", fromAlt: 341, toAlt: 551 },
+        { name: "SL-37160", fromAlt: 339, toAlt: 549 },
+        { name: "SL-37167", fromAlt: 343, toAlt: 552 },
+        { name: "SL-37170", fromAlt: 338, toAlt: 550 },
+        { name: "SL-37172", fromAlt: 340, toAlt: 551 },
+      ],
+    },
   },
   {
     id: "deorbit",
@@ -72,6 +109,18 @@ export const STARLINK_STORY_0404: StoryChapter[] = [
     maneuverFilter: "ALTITUDE_CHANGE",
     speed: 60,
     accentColor: "#ef5350",
+    infographic: {
+      type: "altitude-chart",
+      mode: "deorbit",
+      yRange: [100, 600],
+      satellites: [
+        { name: "SL-11687 [DTC]", fromAlt: 540, toAlt: 330 },
+        { name: "SL-31867", fromAlt: 545, toAlt: 340 },
+        { name: "SL-1971", fromAlt: 530, toAlt: 410 },
+        { name: "SL-3149", fromAlt: 535, toAlt: 430 },
+        { name: "SL-1752", fromAlt: 528, toAlt: 450 },
+      ],
+    },
   },
   {
     id: "beidou",

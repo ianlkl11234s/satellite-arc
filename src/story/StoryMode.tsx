@@ -13,6 +13,8 @@ import { loadSatelliteManeuvers, type SatelliteManeuver } from "../data/maneuver
 import type { ComparisonOrbitPair } from "../globe/ComparisonOrbits";
 import type { StoryChapter } from "./chapters";
 import { STARLINK_STORY_0404 } from "./chapters";
+import { OrbitPlaneShift } from "./infographics/OrbitPlaneShift";
+import { AltitudeChart } from "./infographics/AltitudeChart";
 import * as satellite from "satellite.js";
 
 const FONT = "'Inter', sans-serif";
@@ -271,18 +273,21 @@ export function StoryMode({ onExit }: { onExit: () => void }) {
                 {ch.body}
               </p>
 
-              {/* 軌道指標 */}
-              {ch.showOrbits && (
-                <div style={{
-                  marginTop: 12, padding: "6px 10px", borderRadius: 6,
-                  background: (ch.accentColor ?? "#5B9CF6") + "15",
-                  fontSize: 11, color: ch.accentColor ?? "#5B9CF6",
-                  display: "flex", alignItems: "center", gap: 6,
-                }}>
-                  <span style={{ width: 20, height: 2, background: ch.accentColor ?? "#5B9CF6", borderRadius: 1 }} />
-                  軌道線已顯示於地球上
-                  {ch.speed && ch.speed > 60 && ` · ${ch.speed}x 加速中`}
-                </div>
+              {/* Infographic */}
+              {i === activeChapter && ch.infographic?.type === "orbit-plane-shift" && (
+                <OrbitPlaneShift
+                  prevInclination={ch.infographic.prevInclination ?? 53}
+                  currInclination={ch.infographic.currInclination ?? 53}
+                  count={ch.infographic.count ?? 0}
+                />
+              )}
+              {i === activeChapter && ch.infographic?.type === "altitude-chart" && ch.infographic.satellites && (
+                <AltitudeChart
+                  satellites={ch.infographic.satellites}
+                  mode={ch.infographic.mode ?? "ascent"}
+                  yRange={ch.infographic.yRange}
+                  accentColor={ch.accentColor}
+                />
               )}
             </div>
           </div>
