@@ -19,6 +19,7 @@ import { SolarInfoModal } from "./components/SolarInfoModal";
 import { loadAllSmallBodies, type SmallBody } from "./data/smallBodyLoader";
 import { ViewModeToggle, type ViewMode } from "./components/ViewModeToggle";
 import { Play, Pause, X, LocateFixed, ChevronDown, ChevronUp } from "lucide-react";
+import { StoryMode } from "./story/StoryMode";
 
 const SPEED_OPTIONS = [10, 60, 300, 600];
 const SOLAR_SPEED_OPTIONS = [600, 3600, 86400, 604800, 2592000]; // 10min, 1hr, 1day, 1week, 1month per second
@@ -40,6 +41,19 @@ function InfoRow({ label, value }: { label: string; value: React.ReactNode }) {
 }
 
 export default function App() {
+  // Hash-based story mode routing
+  const [storyMode, setStoryMode] = useState(() => window.location.hash === "#story");
+
+  useEffect(() => {
+    const onHash = () => setStoryMode(window.location.hash === "#story");
+    window.addEventListener("hashchange", onHash);
+    return () => window.removeEventListener("hashchange", onHash);
+  }, []);
+
+  if (storyMode) {
+    return <StoryMode onExit={() => { window.location.hash = ""; setStoryMode(false); }} />;
+  }
+
   const [tles, setTles] = useState<SatelliteTLE[]>([]);
   const [loading, setLoading] = useState(true);
   const [ready, setReady] = useState(false);
