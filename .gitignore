@@ -7,8 +7,4 @@ dist
 .DS_Store
 
 # Claude Code 內部儲存（不 commit）
-.claude/projects/
-.claude/worktrees/
-.claude/todos/
-.claude/settings.local.json
-.claude/.cache/
+.claude/
