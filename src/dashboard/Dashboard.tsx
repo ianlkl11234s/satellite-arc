@@ -4,7 +4,7 @@
  * 互動式日報：時間軸選擇 → 當天 shell 分布 → top movers → 高度分布圖
  */
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { loadStarlinkDailyData, type DaySummary, type DailyManeuver } from "./dataLoader";
 
 const FONT = "'Inter', sans-serif";
@@ -192,16 +192,6 @@ export function Dashboard({ onExit }: { onExit: () => void }) {
   const day = data[selectedDay] ?? data[data.length - 1];
   const maxShellCount = day ? Math.max(...Object.values(day.shells).map((s) => s.count)) : 0;
 
-  // 全期間 top movers（用於亮點區）
-  const allTopMovers = useMemo(() => {
-    const all: (DailyManeuver & { day: string })[] = [];
-    for (const d of data) {
-      for (const m of d.topMovers.slice(0, 3)) {
-        all.push({ ...m, day: d.date });
-      }
-    }
-    return all.sort((a, b) => Math.abs(b.delta_period) - Math.abs(a.delta_period)).slice(0, 5);
-  }, [data]);
 
   if (loading) {
     return (

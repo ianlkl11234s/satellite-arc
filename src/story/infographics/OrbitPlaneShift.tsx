@@ -143,7 +143,6 @@ export function OrbitPlaneShift({ prevInclination, currInclination, count }: Pro
 
     // ── 下半：緯度覆蓋帶 ──
     const bandY = topH + 20;
-    const bandH = 120;
     const bandLeft = 50;
     const bandRight = W - 20;
     const bandW = bandRight - bandLeft;

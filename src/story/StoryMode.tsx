@@ -6,12 +6,11 @@
  */
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { GlobeView, type CameraPreset } from "../globe/GlobeView";
+import { GlobeView } from "../globe/GlobeView";
 import type { SatelliteTLE } from "../data/satelliteLoader";
 import { loadSatelliteTLEs, computeOrbitPath, splitAtDateline } from "../data/satelliteLoader";
 import { loadSatelliteManeuvers, type SatelliteManeuver } from "../data/maneuverLoader";
 import type { ComparisonOrbitPair } from "../globe/ComparisonOrbits";
-import type { StoryChapter } from "./chapters";
 import { STARLINK_STORY_0404 } from "./chapters";
 import { OrbitPlaneShift } from "./infographics/OrbitPlaneShift";
 import { AltitudeChart } from "./infographics/AltitudeChart";

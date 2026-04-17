@@ -5,7 +5,7 @@
  * 點擊可飛到對應衛星位置，展開可看前後參數對比。
  */
 
-import { useState, useMemo, useCallback } from "react";
+import { useState, useMemo } from "react";
 import { TrendingUp, ArrowUpDown, Circle, Clock, ChevronDown, ChevronUp, Orbit, Zap } from "lucide-react";
 import type { SatelliteManeuver } from "../data/maneuverLoader";
 import { MANEUVER_TYPES } from "../data/maneuverLoader";
