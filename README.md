@@ -2,9 +2,11 @@
 
 3D 即時衛星軌道追蹤 + 太陽系模擬視覺化。純 Three.js 渲染，瀏覽器端即時計算。
 
-**雙模式切換：**
-- **Earth Mode** — 從 Supabase 載入 ~15,000 顆衛星（含太空碎片）的 TLE 軌道參數，用 satellite.js 在瀏覽器即時計算位置，以 Three.js 渲染在 3D 地球上
+**雙模式 + 兩個獨立頁面：**
+- **Earth Mode** — 從 Supabase 載入活躍衛星 TLE（資料庫 67k 筆：40k 碎片 + 11k Starlink + 16k 其他；預設顯示 ~17k 活躍 payload），用 satellite.js 在瀏覽器即時計算位置，以 Three.js 渲染在 3D 地球上
 - **Solar System Mode** — 8 大行星 + 月球 + 矮行星 + 彗星 + 86,549 顆真實小天體（JPL SBDB），Keplerian 軌道即時計算
+- **Story Mode** (`/#story`) — 互動式 Scrollytelling，含變軌視覺化三場景與軌道面調整 infographic
+- **Dashboard** (`/#dashboard`) — Starlink 每日變軌分析儀表板
 
 ### Earth Mode
 ![Satellite Tracker Overview](screenshot/overview.png)
@@ -22,8 +24,11 @@
 
 ### 核心渲染
 - **3D 地球** — 日夜交替 shader（Blue Marble 白天 + Black Marble 夜晚 + 即時晨昏線）+ Fresnel 大氣光暈
-- **~15,000 顆衛星** — 即時 SGP4 位置計算，分批更新保持 60fps
+- **~17k 活躍衛星（預設）** — 即時 SGP4 + velocity 外插，分批計算維持 60fps 平滑動畫
+- **只顯示活躍衛星 toggle** — TLE epoch > 30 天的失效 / 已 decay 衛星自動過濾
+- **自動 sanity check** — propagation 結果 altitude > 50,000 km 或 velocity > 100 km/s 的異常衛星即時剔除
 - **11 種用途分類** — 星鏈 / 寬頻通訊 / 衛星電話 / 導航定位 / 地球觀測 / 科學太空站 / 軍事情報 / 技術展示 / 太空碎片 等
+- **Lazy load** — debris + other 預設不下載，切換開關時才從 Supabase 拉取
 - **動態尾巴** — 歷史位置緩衝區（20-50 步），零額外 SGP4 計算
 - **3D 軌道線** — 依真實高度映射（LEO 貼球面、GEO 遠離球面），清晰區分軌道層
 
@@ -38,6 +43,21 @@
 - **配色主題** — 4 組預設（Default / Warm / Cool / Mono）+ 自訂
 - **統計** — 衛星總數、軌道分佈、用途圓餅圖、主要營運商
 - **視角** — 5 個預設相機視角快切
+
+### 軌道分析（Analysis Mode）
+- **變軌偵測** — 從 `satellite_maneuvers` materialized view 讀取每 2hr 刷新的變軌事件
+- **三種變軌分類** — Altitude Change（高度變更 > 0.05 min）/ Plane Change（傾角變更 > 0.01°）/ Shape Change（離心率變更 > 0.001）
+- **聚焦過濾 + 視覺標記** — 啟用分析模式後只顯示變軌衛星，並以類型色脈動高亮
+- **變軌前後軌道對比** — 從 `satellite_tle_history` 讀取歷史 TLE，計算變軌前後軌道弧線對照
+- **群體軌道顯示** — 一次展示篩選出的所有變軌衛星軌道
+
+### Story Mode (`/#story`)
+- **Scrollytelling 簡報模式** — 滾動觸發場景切換 + 文字說明
+- **變軌視覺化三場景** — 前後軌道對比、群體軌道、加速觀察
+- **Infographic 圖表** — 軌道面調整示意圖內嵌故事中
+
+### Dashboard (`/#dashboard`)
+- **Starlink 每日變軌儀表板** — Top movers、變軌類型分佈、軌道 shell 變化趨勢
 
 ### 太空發射
 - **全球發射台標記** — 233 個發射台地表標記，即將發射的台站顯示脈衝動畫（< 24h 紅色 / < 7d 橘色）
@@ -134,13 +154,17 @@ THREE.Points 粒子雲（7 類別，各色分開渲染）
 
 | 策略 | 說明 |
 |------|------|
-| 分批 SGP4 | 每幀只算 1/4 衛星，4 幀完成一輪 |
+| 分批 SGP4 + velocity 外插 | 每幀只對 1/4 衛星跑 SGP4，其餘用 ECI velocity 外插到當前 simTime，消除 cohort 時間錯位 |
+| ECI 快取 | 存 ECI position + velocity + cachedSim，每幀僅做線性外插 + gmst 旋轉，零 SGP4 cost |
+| Decayed TLE 過濾 | 活躍衛星 toggle + altitude/velocity sanity check，過期 TLE 外推爆炸自動跳過 |
+| Lazy load | debris + other 預設不從 Supabase 下載，開關打開時才補拉 |
+| Lazy orbit 弧線 | 靜態軌道線僅在 `showOrbits=true` 時才 chunked 計算（每塊 500 顆 + `setTimeout(0)` yield） |
 | 歷史緩衝區 | 尾巴用 Float64Array 環形緩衝（最多 55 幀），零 GC 壓力 |
 | 零每幀分配 | Color / Matrix4 / Vector3 預分配重用，消除 GC 卡頓 |
 | Tab 切換保護 | deltaTime cap 1s + 清空歷史緩衝，防止切回瞬間暴衝 |
-| InstancedMesh | 3 層光點（core + glow1 + glow2）共 ~7 draw calls |
+| InstancedMesh | 3 層光點（core + glow1 + glow2）共 ~7 draw calls，容量 65,536 |
 | 非同步篩選 | 篩選切換顯示 overlay，不凍結 UI |
-| 淡出過渡 | Loading → 主畫面平滑淡出，Three.js 在背景預載 |
+| 非阻塞載入 | TLE 下載完立刻進場，不等 orbit 預計算 |
 
 ### 座標系
 
@@ -153,7 +177,9 @@ Earth radius = 1.0
 
 | 來源 | 內容 | 更新頻率 |
 |------|------|---------|
-| **CelesTrak** (36 群組) → data-collectors → Supabase | TLE 軌道參數 (~15,000 顆，含太空碎片) | 每 2 小時 |
+| **CelesTrak** (36 群組) → data-collectors → Supabase | TLE 軌道參數 (~67k 筆：40k 碎片 + 11k Starlink + 16k 其他) | 每 2 小時 |
+| **satellite_tle_history** (Supabase) | 歷史 TLE，供變軌前後軌道對比 | 每 2 小時累積 |
+| **satellite_maneuvers** (Supabase MATERIALIZED VIEW) | 變軌偵測事件（altitude / plane / shape change） | 每 2 小時 cron 刷新 |
 | **Launch Library 2** (TheSpaceDevs) → data-collectors → Supabase | 發射時程 + 233 發射台 + 太空事件 | 每 5 分鐘輪轉 |
 | **UCS Satellite Database** → Supabase | 用途/營運商/發射資訊 (7,560 筆) | 靜態 |
 | **NASA Black Marble** | 地球夜景貼圖 | 靜態 |
@@ -191,17 +217,30 @@ src/
 │   ├── SolarSidebar.tsx         ← 太陽系模式 Icon Rail + 3 面板（設定/配色/百科）
 │   ├── ViewModeToggle.tsx       ← Earth / Solar System 切換按鈕
 │   ├── LaunchPanel.tsx          ← 發射時程面板
+│   ├── ManeuverPanel.tsx        ← 變軌分析面板（分析模式）
 │   ├── InfoModal.tsx            ← 操作指南（中英文）
 │   └── LoadingScreen.tsx        ← 載入畫面
+├── story/                       ← Scrollytelling 故事模式（/#story）
+│   ├── StoryMode.tsx            ← 滾動觸發場景切換容器
+│   └── infographics/            ← 軌道面調整等 infographic 圖表元件
+├── dashboard/                   ← Starlink 每日變軌儀表板（/#dashboard）
+│   └── Dashboard.tsx
 ├── data/
-│   ├── satelliteLoader.ts       ← 衛星 TLE 載入 + 11 分類
+│   ├── satelliteLoader.ts       ← 衛星 TLE 載入 + 11 分類 + epoch/active 過濾
 │   ├── launchLoader.ts          ← 發射資料載入
+│   ├── maneuverLoader.ts        ← 變軌事件 + 歷史 TLE 載入
 │   ├── smallBodyLoader.ts       ← 小天體軌道要素載入（Supabase 分頁）
 │   └── satelliteInfo.ts         ← 中文俗名對照表
 ├── hooks/
 │   └── useIsMobile.ts
-├── App.tsx                      ← 雙模式狀態管理 + 條件渲染
+├── utils/                       ← 共用工具（時間格式化等）
+├── types/                       ← 型別定義
+├── App.tsx                      ← 雙模式狀態管理 + hash routing + 條件渲染
 └── main.tsx
+
+reports/                         ← 軌道分析報告（月份 / 需求資料夾）
+├── README.md                    ← 報告結構與命名規則
+└── YYYY-MM/MMDD_topic-slug/     ← readme.md + data/ + sql/ + report/
 
 scripts/
 ├── small_bodies_schema.sql      ← Supabase small_bodies 表 DDL
@@ -305,8 +344,8 @@ npm run build
 
 | 專案 | 角色 |
 |------|------|
-| `data-collectors` | CelesTrak TLE（每 2h）+ Launch Library 2 發射時程（每 5min 輪轉）→ Supabase |
-| `gis-platform` | Supabase schema + UCS 衛星目錄 + satellite_classified view（11 category）+ pg_cron 自動分區 |
+| `data-collectors` | CelesTrak TLE（每 2h）+ TLE 歷史累積 + Launch Library 2 發射時程（每 5min 輪轉）→ Supabase |
+| `gis-platform` | Supabase schema + UCS 衛星目錄 + satellite_classified view（11 category）+ satellite_maneuvers materialized view + pg_cron 自動分區 |
 | `plan-art` | 航班軌跡視覺化（同系列） |
 
 ## 授權
