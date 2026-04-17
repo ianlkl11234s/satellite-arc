@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { GlobeView, type CameraInfo, type CameraPreset, type GlobeViewHandle } from "./globe/GlobeView";
 import type { SatellitePosition } from "./globe/GlobeScene";
 import type { SatelliteTLE } from "./data/satelliteLoader";
-import { loadSatelliteTLEs, convertSatellitesToFlights, computeOrbitPath, splitAtDateline, loadSatelliteCatalog, type SatelliteCatalog, CATEGORIES } from "./data/satelliteLoader";
+import { loadSatelliteTLEs, convertSatellitesToFlights, computeOrbitPath, splitAtDateline, loadSatelliteCatalog, isTleActive, type SatelliteCatalog, CATEGORIES } from "./data/satelliteLoader";
 import { getSatelliteInfo, ORBIT_TYPE_LABELS } from "./data/satelliteInfo";
 import { loadUpcomingLaunches, loadLaunchPads, type Launch, type LaunchPad } from "./data/launchLoader";
 import { loadSatelliteManeuvers, loadHistoricalTLEs, type SatelliteManeuver } from "./data/maneuverLoader";
@@ -69,6 +69,8 @@ export default function App() {
   const [showOrbits, setShowOrbits] = useState(false);
   const [showDayNight, setShowDayNight] = useState(false);
   const [showLaunchPads, setShowLaunchPads] = useState(true);
+  // 只顯示活躍衛星：TLE epoch < 30 天（過濾已 decay / 失去追蹤的衛星）
+  const [activeOnly, setActiveOnly] = useState(true);
 
   // 發射資料
   const [launches, setLaunches] = useState<Launch[]>([]);
@@ -85,7 +87,12 @@ export default function App() {
   const [orbScale, setOrbScale] = useState(0.8);
   const [orbOpacity, setOrbOpacity] = useState(0.9);
   const [trailLength, setTrailLength] = useState(30);
-  const [visibleCategories, setVisibleCategories] = useState<Set<string>>(new Set(ALL_CATEGORIES.filter(c => c !== "starlink" && c !== "debris")));
+  // 預設排除：starlink (太多)、debris (無用)、other (雜項、多半已 decay)
+  const LAZY_LOAD_CATEGORIES = ["debris", "other"];
+  const [visibleCategories, setVisibleCategories] = useState<Set<string>>(new Set(ALL_CATEGORIES.filter(c => c !== "starlink" && c !== "debris" && c !== "other")));
+  // 已從 Supabase 載入的分類（lazy load 追蹤）
+  const [loadedCategories, setLoadedCategories] = useState<Set<string>>(new Set());
+  const [lazyLoading, setLazyLoading] = useState<string | null>(null);
   const [colors, setColors] = useState<Record<string, string>>(DEFAULT_COLORS);
 
   // 進階篩選
@@ -166,12 +173,48 @@ export default function App() {
   speedRef.current = speed;
   playingRef.current = playing;
 
-  // 載入 TLE
+  // 載入 TLE — 預設排除 debris + other（可 lazy load），一載入完就解除 loading overlay
   useEffect(() => {
-    loadSatelliteTLEs()
-      .then((data) => { setTles(data); setLoading(false); })
+    loadSatelliteTLEs({ exclude: LAZY_LOAD_CATEGORIES })
+      .then((data) => {
+        setTles(data);
+        setLoading(false);
+        setReady(true);
+        // 記錄已載入的分類
+        const loaded = new Set<string>();
+        for (const tle of data) loaded.add(tle.category);
+        setLoadedCategories(loaded);
+      })
       .catch((err) => { setError(String(err)); setLoading(false); });
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  // 動態載入：當使用者啟用某個尚未載入的分類，背景補拉 TLE
+  useEffect(() => {
+    if (loadedCategories.size === 0) return; // 還沒初次載入完
+    if (lazyLoading) return; // 已有進行中的 lazy load
+    for (const cat of visibleCategories) {
+      if (!loadedCategories.has(cat) && LAZY_LOAD_CATEGORIES.includes(cat)) {
+        setLazyLoading(cat);
+        loadSatelliteTLEs({ only: [cat] })
+          .then((more) => {
+            setTles((prev) => [...prev, ...more]);
+            setLoadedCategories((prev) => {
+              const n = new Set(prev);
+              n.add(cat);
+              return n;
+            });
+            setLazyLoading(null);
+          })
+          .catch((err) => {
+            console.warn(`[satellite] lazy load ${cat} failed:`, err);
+            setLazyLoading(null);
+          });
+        break; // 一次只載一個分類
+      }
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [visibleCategories, loadedCategories, lazyLoading]);
 
   // 載入發射資料（非阻塞，背景載入）
   useEffect(() => {
@@ -211,14 +254,22 @@ export default function App() {
     }
   }, [viewMode, smallBodies, solarLoading]);
 
+  // 活躍衛星過濾：TLE 夠新才進入 sim pipeline。
+  // 傳給 GlobeView 的 tles / orbit 計算 都用這個，等於「載入時也不載入 inactive」
+  const activeTles = useMemo(() => {
+    if (!activeOnly) return tles;
+    const now = Date.now();
+    return tles.filter((t) => isTleActive(t, 30, now));
+  }, [tles, activeOnly]);
+
   const filteredTles = useMemo(() => {
-    return tles.filter((tle) => {
+    return activeTles.filter((tle) => {
       if (!visibleCategories.has(tle.category)) return false;
       if (visibleConstellations !== null && !visibleConstellations.has(tle.constellation || "Other")) return false;
       if (visibleCountries !== null && !visibleCountries.has(tle.country_operator ?? "Unknown")) return false;
       return true;
     });
-  }, [tles, visibleCategories, visibleConstellations, visibleCountries]);
+  }, [activeTles, visibleCategories, visibleConstellations, visibleCountries]);
 
   // 分析模式：計算 NORAD ID 過濾集 + 高亮色
   const analysisNoradFilter = useMemo(() => {
@@ -249,31 +300,47 @@ export default function App() {
   const [orbits, setOrbits] = useState<Array<{ path: [number, number, number, number][]; orbitType: string }>>([]);
   const [recalculating, setRecalculating] = useState(false);
 
+  // orbit 弧線只在 showOrbits=true 時才計算（預設關閉，省掉幾秒阻塞）
+  // 計算時分塊 + setTimeout(0) yield，讓 UI 保持響應
   useEffect(() => {
-    if (filteredTles.length === 0) {
+    if (!showOrbits || filteredTles.length === 0) {
       setOrbits([]);
       return;
     }
 
+    let cancelled = false;
     setRecalculating(true);
 
-    // 用 setTimeout 讓 UI 先渲染「重新計算中」overlay
-    const timer = setTimeout(() => {
-      const flights = convertSatellitesToFlights(filteredTles, new Date(), 60, 20);
+    const CHUNK_SIZE = 500;
+    const run = async () => {
+      const baseTime = new Date();
+      const result: Array<{ path: [number, number, number, number][]; orbitType: string }> = [];
       const tleMap = new Map<string, string>();
       for (const tle of filteredTles) tleMap.set(`sat_${tle.norad_id}`, tle.category);
-      const result = flights.map((f) => ({
-        path: f.path,
-        orbitType: tleMap.get(f.fr24_id.replace(/_\d+$/, "")) ?? "other",
-      }));
-      setOrbits(result);
-      setRecalculating(false);
-      if (!ready) setReady(true);
-    }, 50);
 
-    return () => clearTimeout(timer);
+      for (let i = 0; i < filteredTles.length; i += CHUNK_SIZE) {
+        if (cancelled) return;
+        const chunk = filteredTles.slice(i, i + CHUNK_SIZE);
+        const flights = convertSatellitesToFlights(chunk, baseTime, 60, 20);
+        for (const f of flights) {
+          result.push({
+            path: f.path,
+            orbitType: tleMap.get(f.fr24_id.replace(/_\d+$/, "")) ?? "other",
+          });
+        }
+        await new Promise((r) => setTimeout(r, 0)); // yield to UI
+      }
+
+      if (!cancelled) {
+        setOrbits(result);
+        setRecalculating(false);
+      }
+    };
+
+    run();
+    return () => { cancelled = true; setRecalculating(false); };
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [filteredTles]);
+  }, [filteredTles, showOrbits]);
 
   const getCurrentTime = useCallback(() => simTimeRef.current, []);
 
@@ -306,9 +373,9 @@ export default function App() {
 
   const soloCategory = useCallback((cat: string) => {
     setVisibleCategories((prev) => {
-      // 如果已經是 solo 這個 category，恢復全部（不含 starlink 和 debris）
+      // 如果已經是 solo 這個 category，恢復全部（不含 starlink、debris、other — 太多或已失效）
       if (prev.size === 1 && prev.has(cat)) {
-        return new Set(ALL_CATEGORIES.filter(c => c !== "starlink" && c !== "debris"));
+        return new Set(ALL_CATEGORIES.filter(c => c !== "starlink" && c !== "debris" && c !== "other"));
       }
       // 否則 solo：只顯示這個 category
       return new Set([cat]);
@@ -462,7 +529,7 @@ export default function App() {
       {viewMode === "earth" ? (
         <GlobeView
           ref={globeViewRef}
-          tles={tles}
+          tles={activeTles}
           orbits={orbits}
           getCurrentTime={getCurrentTime}
           visibleOrbitTypes={visibleCategories}
@@ -518,7 +585,7 @@ export default function App() {
 
       {/* Icon Rail Sidebar — 地球模式才顯示 */}
       {viewMode === "earth" && <Sidebar
-        tles={tles}
+        tles={activeTles}
         visibleCategories={visibleCategories}
         onToggleCategory={toggleCategory}
         onSoloCategory={soloCategory}
@@ -550,6 +617,8 @@ export default function App() {
         onCameraPreset={(preset) => setCameraPreset(preset as CameraPreset)}
         showLaunchPads={showLaunchPads}
         onShowLaunchPadsChange={setShowLaunchPads}
+        activeOnly={activeOnly}
+        onActiveOnlyChange={setActiveOnly}
         isMobile={isMobile}
         launches={launches}
         onFlyToLaunch={(lat, lng, launch) => {
@@ -965,6 +1034,23 @@ export default function App() {
               {solarLoadingMsg}
             </span>
           </div>
+        </div>
+      )}
+
+      {/* Lazy load 小提示（右下角） */}
+      {lazyLoading && (
+        <div style={{
+          position: "absolute", bottom: 60, right: 16, zIndex: 25,
+          display: "flex", alignItems: "center", gap: 10,
+          padding: "8px 14px",
+          background: "#12161ECC", backdropFilter: "blur(24px)",
+          borderRadius: 10, border: "1px solid rgba(255,180,71,0.3)",
+          pointerEvents: "none",
+        }}>
+          <div style={{ width: 8, height: 8, borderRadius: "50%", background: "#FFB347", animation: "pulse 1s ease-in-out infinite" }} />
+          <span style={{ fontSize: 12, fontFamily: FONT, color: "rgba(255,255,255,0.7)" }}>
+            載入 {CATEGORIES[lazyLoading]?.zh ?? lazyLoading}...
+          </span>
         </div>
       )}
 

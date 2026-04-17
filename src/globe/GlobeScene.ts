@@ -29,6 +29,13 @@ export interface SatellitePosition {
   constellation: string;
 }
 
+/** 內部快取：包含 ECI 位置/速度與 SGP4 計算時間，用於 velocity 外插 */
+interface CachedSatState extends SatellitePosition {
+  eciX: number; eciY: number; eciZ: number;
+  velX: number; velY: number; velZ: number;
+  cachedSim: number; // SGP4 計算當下的 simTime (unix seconds)
+}
+
 export class GlobeScene {
   scene: THREE.Scene;
   camera: THREE.PerspectiveCamera;
@@ -49,10 +56,11 @@ export class GlobeScene {
   trailStepSec = 30;
   private trailUpdateCounter = 0;
 
-  // 分批更新位置：每幀只算 1/N 的衛星，快取結果
+  // 分批更新位置：每幀只對 1/N 衛星跑 SGP4，其他幀用 velocity 外插
+  // 這樣 CPU 成本不變，但每顆衛星每幀都能平滑移動（不會 4 幀才跳一次）
   private readonly BATCH_COUNT = 4;
   private batchIndex = 0;
-  private positionCache = new Map<number, SatellitePosition>();
+  private positionCache = new Map<number, CachedSatState>();
 
   // 歷史位置環形緩衝區（用於動態尾巴，不需額外 SGP4）
   // key: satellite index → 固定長度環形緩衝 [x,y,z]
@@ -129,7 +137,7 @@ export class GlobeScene {
     this.orbits = new OrbitLines(this.scene);
     this.orbits.setVisible(false); // 靜態軌道預設關
     this.comparisonOrbits = new ComparisonOrbits(this.scene);
-    this.trails = new TrailLines(this.scene, 13000, 10);
+    this.trails = new TrailLines(this.scene, 65536, 10);
     this.launchPads = new LaunchPadMarkers(this.scene);
 
     const onResize = () => {
@@ -152,6 +160,11 @@ export class GlobeScene {
   setTLEs(tles: SatelliteTLE[]) {
     this.tles = tles;
     this.satRecs = [];
+    // TLE 陣列變動時必須清掉快取 — positionCache/historyBuffer 用陣列索引當 key，
+    // 新舊陣列的同一索引可能指向不同衛星。
+    this.positionCache.clear();
+    this.historyBuffer.clear();
+    this.batchIndex = 0;
     for (const tle of tles) {
       try {
         this.satRecs.push(satellite.twoline2satrec(tle.tle_line1, tle.tle_line2));
@@ -437,25 +450,64 @@ export class GlobeScene {
         try {
           const posVel = satellite.propagate(satrec, date);
           if (!posVel.position || typeof posVel.position === "boolean") continue;
+          if (!posVel.velocity || typeof posVel.velocity === "boolean") continue;
 
-          const geo = satellite.eciToGeodetic(posVel.position, gmst);
-          const lat = satellite.degreesLat(geo.latitude);
-          const lng = satellite.degreesLong(geo.longitude);
-          const altKm = geo.height;
-          const [x, y, z] = geoToCartesian(lat, lng, altKm);
+          const eci = posVel.position;
+          const vel = posVel.velocity;
 
-          this.positionCache.set(i, {
-            id: `sat_${tle.norad_id}`,
-            index: i,
-            x, y, z,
-            lat, lng, altKm,
-            orbitType: cat,
-            name: tle.name,
-            constellation: tle.constellation,
-          });
+          // Sanity check：過期 TLE 的 SGP4 外推會爆炸（衛星已 decay）
+          // 1. 高度 > 50,000 km（GEO 36,000 上限）= 軌道能量失控
+          // 2. 速度 > 100 km/s（LEO ~7.8, GEO ~3）= 資料已無效
+          // 3. 非有限數
+          const altFromEarth = Math.sqrt(eci.x * eci.x + eci.y * eci.y + eci.z * eci.z) - 6378;
+          const vMag = Math.sqrt(vel.x * vel.x + vel.y * vel.y + vel.z * vel.z);
+          if (!isFinite(altFromEarth) || altFromEarth > 50000 || altFromEarth < -200 ||
+              !isFinite(vMag) || vMag > 100) {
+            this.positionCache.delete(i);
+            continue;
+          }
+
+          // 只更新 ECI 狀態 + 時間戳；x/y/z/lat/lng/altKm 留給外插階段算
+          const existing = this.positionCache.get(i);
+          if (existing) {
+            existing.eciX = eci.x; existing.eciY = eci.y; existing.eciZ = eci.z;
+            existing.velX = vel.x; existing.velY = vel.y; existing.velZ = vel.z;
+            existing.cachedSim = currentTime;
+            existing.orbitType = cat;
+          } else {
+            this.positionCache.set(i, {
+              id: `sat_${tle.norad_id}`,
+              index: i,
+              x: 0, y: 0, z: 0, lat: 0, lng: 0, altKm: 0,
+              orbitType: cat,
+              name: tle.name,
+              constellation: tle.constellation,
+              eciX: eci.x, eciY: eci.y, eciZ: eci.z,
+              velX: vel.x, velY: vel.y, velZ: vel.z,
+              cachedSim: currentTime,
+            });
+          }
         } catch {
           continue;
         }
+      }
+
+      // 外插階段：對所有快取衛星用 ECI velocity 推到當前 simTime
+      // 這讓所有衛星在同一個 simTime 上呈現（消除 batch 間的時間錯位），
+      // 且每幀都有新位置（即使本幀沒跑 SGP4），動作平滑。
+      const eciScratch = { x: 0, y: 0, z: 0 };
+      for (const cached of this.positionCache.values()) {
+        const dt = currentTime - cached.cachedSim;
+        eciScratch.x = cached.eciX + cached.velX * dt;
+        eciScratch.y = cached.eciY + cached.velY * dt;
+        eciScratch.z = cached.eciZ + cached.velZ * dt;
+        const geo = satellite.eciToGeodetic(eciScratch, gmst);
+        const lat = satellite.degreesLat(geo.latitude);
+        const lng = satellite.degreesLong(geo.longitude);
+        const altKm = geo.height;
+        const [x, y, z] = geoToCartesian(lat, lng, altKm);
+        cached.lat = lat; cached.lng = lng; cached.altKm = altKm;
+        cached.x = x; cached.y = y; cached.z = z;
       }
 
       // 從快取組裝完整的 entries

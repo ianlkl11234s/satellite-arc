@@ -58,6 +58,8 @@ export interface SidebarProps {
   onClearCountries?: () => void;
   showLaunchPads?: boolean;
   onShowLaunchPadsChange?: (v: boolean) => void;
+  activeOnly?: boolean;
+  onActiveOnlyChange?: (v: boolean) => void;
   onInfoClick?: () => void;
   onCameraPreset?: (preset: string) => void;
   isMobile?: boolean;
@@ -231,6 +233,13 @@ function SettingsPanel(props: SidebarProps) {
       {/* 顯示 */}
       <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
         <SectionHeader>顯示</SectionHeader>
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+          <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
+            <span style={{ fontSize: 13, fontFamily: T.FONT, color: T.FONT_SECONDARY }}>只顯示活躍衛星</span>
+            <span style={{ fontSize: 10, fontFamily: T.FONT, color: T.DIM }}>過濾 TLE {">"} 30 天的失效衛星</span>
+          </div>
+          <ToggleSwitch checked={props.activeOnly ?? true} onChange={(v) => props.onActiveOnlyChange?.(v)} />
+        </div>
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
           <span style={{ fontSize: 13, fontFamily: T.FONT, color: T.FONT_SECONDARY }}>動態尾巴</span>
           <ToggleSwitch checked={props.showTrails} onChange={props.onShowTrailsChange} />

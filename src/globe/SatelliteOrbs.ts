@@ -7,7 +7,7 @@
 
 import * as THREE from "three";
 
-const MAX_INSTANCES = 16384;
+const MAX_INSTANCES = 65536;
 
 /** 軌道類型色碼 */
 const ORBIT_TYPE_COLORS: Record<string, THREE.Color> = {

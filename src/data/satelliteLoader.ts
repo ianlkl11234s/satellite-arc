@@ -48,6 +48,35 @@ export const CATEGORIES: Record<string, { en: string; zh: string; color: string 
   other:      { en: "Other", zh: "其他", color: "#78909c" },
 };
 
+/**
+ * 從 TLE line1 解析 epoch（UTC unix ms）
+ * 格式：columns 19-32 (0-indexed 18-31) 為 "YYDDD.DDDDDDDD"
+ *   YY   末兩位年份（57-99=19YY, 00-56=20YY）
+ *   DDD  年積日（從 1 開始）
+ */
+export function parseTleEpoch(line1: string): number {
+  const yy = parseInt(line1.substring(18, 20), 10);
+  const doy = parseFloat(line1.substring(20, 32));
+  if (!isFinite(yy) || !isFinite(doy)) return 0;
+  const year = yy < 57 ? 2000 + yy : 1900 + yy;
+  const jan1 = Date.UTC(year, 0, 1);
+  return jan1 + (doy - 1) * 86400 * 1000;
+}
+
+/**
+ * TLE 是否活躍：epoch 不超過 maxAgeDays 天
+ *
+ * CelesTrak 為活躍衛星每 1-3 天更新一次 TLE。TLE > 30 天通常代表：
+ * - 衛星已 decay（大氣燒毀）
+ * - 失去追蹤（訊號中斷、任務結束）
+ * - SGP4 外推此時會產生失控結果
+ */
+export function isTleActive(tle: { tle_line1: string }, maxAgeDays = 30, now = Date.now()): boolean {
+  const epochMs = parseTleEpoch(tle.tle_line1);
+  if (epochMs === 0) return false;
+  return (now - epochMs) < maxAgeDays * 86400 * 1000;
+}
+
 /** 顯示用標籤 */
 export function categoryLabel(cat: string): string {
   const info = CATEGORIES[cat];
@@ -85,11 +114,21 @@ function scaleAltitude(altMeters: number): number {
 
 /**
  * 從 Supabase 載入衛星 TLE 資料
+ *
+ * @param opts.exclude   排除的 category 清單（server side 過濾）
+ * @param opts.only      僅載入指定 category（server side 過濾）
  */
-export async function loadSatelliteTLEs(): Promise<SatelliteTLE[]> {
+export async function loadSatelliteTLEs(opts?: { exclude?: string[]; only?: string[] }): Promise<SatelliteTLE[]> {
   // 使用 satellite_classified view（含 category + country）
   const PAGE_SIZE = 5000;
-  const baseUrl = `${SUPABASE_URL}/rest/v1/satellite_classified?select=norad_id,name,constellation,orbit_type,tle_line1,tle_line2,inclination,period_min,category,country_operator&order=norad_id`;
+  const filterParts: string[] = [];
+  if (opts?.only && opts.only.length > 0) {
+    filterParts.push(`category=in.(${opts.only.join(",")})`);
+  } else if (opts?.exclude && opts.exclude.length > 0) {
+    filterParts.push(`category=not.in.(${opts.exclude.join(",")})`);
+  }
+  const filterStr = filterParts.length > 0 ? `&${filterParts.join("&")}` : "";
+  const baseUrl = `${SUPABASE_URL}/rest/v1/satellite_classified?select=norad_id,name,constellation,orbit_type,tle_line1,tle_line2,inclination,period_min,category,country_operator&order=norad_id${filterStr}`;
   const headers = {
     apikey: SUPABASE_ANON_KEY,
     Authorization: `Bearer ${SUPABASE_ANON_KEY}`,
