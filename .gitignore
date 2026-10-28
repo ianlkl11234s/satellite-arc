@@ -8,3 +8,4 @@ dist
 
 # Claude Code 內部儲存（不 commit）
 .claude/
+.wrangler/
