@@ -1,0 +1,12 @@
+// Cloudflare Workers 靜態資產部署設定（取代 Zeabur nginx；Zeabur 2026-12 停運）
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "satellite-arc",
+  "compatibility_date": "2026-10-01",
+  "assets": {
+    "directory": "./dist",
+    // 同原 nginx 的 try_files ... /index.html：不存在的路徑回 index.html（200）
+    "not_found_handling": "single-page-application"
+  },
+  "observability": { "enabled": true }
+}
